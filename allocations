@@ -1,12 +1,15 @@
 Chenyu Yuan
 - Working on clustering approaches: Before extraction, use k-means or Hierarchical clustering (HAC) on sentence embeddings to see whether natural clusters
-correspond to schema fields.
-
+correspond to schema fields.:-
+1.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Mew Yongvibulsiri and Nachiket Gondane
 - Design and implement an information extraction pipeline: Working on axes 1;
-rule-based approaches versus LLMs 
-
+rule-based approaches versus LLMs. :-
+1.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Priyanshu Gurjar and Vikrant Nitin Deshmukh
 - Design and implement an information extraction pipeline: Working on axes 1;
-end-to-end models versus decomposing 
+end-to-end models versus decomposing. :-
+1.
 
