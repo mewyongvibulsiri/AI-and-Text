@@ -3,8 +3,10 @@
 Chenyu Yuan
 - Working on clustering approaches: Before extraction, use k-means or Hierarchical clustering (HAC) on sentence embeddings to see whether natural clusters
 correspond to schema fields.:-
+
+
 ![K-means](K-means_flows.jpeg)
-1.
+
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Mew Yongvibulsiri and Nachiket Gondane
 - Design and implement an information extraction pipeline: Working on axes 1;
