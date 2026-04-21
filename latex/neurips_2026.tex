@@ -56,6 +56,7 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
+\usepackage{graphicx}
 
 % Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote. 
 \title{Task 2: Structured Information Extraction}
@@ -111,15 +112,15 @@
 
 
 \section{Introduction}
-The abstracts of clinical trials contain important information about study design, participant groups, treatments, and results. However, this information is presented in unstructured text, making it difficult to extract and compare efficiently across studies. Converting such abstracts into structured tables can support faster evidence and make relevant information easier to locate and analyse. This creates a useful setting for studying how different information extraction strategies perform on biomedical text.
+The abstracts of clinical trials contain important information about study design, participant groups, treatments, and results. However, this information is presented in unstructured text, making it difficult to extract and compare efficiently across studies. Converting such abstracts into structured tables can support faster evidence synthesis, make relevant information easier to locate and analyse, and help researchers and clinicians compare findings across a large number of studies. This creates a useful setting for studying how different information extraction strategies perform on biomedical text.
 
 
 \subsection{Task Overview}
 
 
-This project addresses the task of structured information extraction from clinical trial abstracts in the \textbf{EBM-NLP} dataset. The objective is to identify and extract \textbf{Population, Intervention, Comparator, and Outcome (PICO)} information from unstructured abstracts and represent it in a predefined schema.
+This project addresses the task of \textbf{structured information extraction} from clinical trial abstracts in the \textbf{EBM-NLP} dataset. The objective is to identify and extract \textbf{Population, Intervention, Comparator, and Outcome (PICO)} information from unstructured abstracts and represent it in a predefined schema. 
 
-The task also includes preliminary clustering analysis and comparison of alternative extraction pipelines. We then evaluate these approaches in terms of extraction quality and discuss the trade-offs and limitations of the task.
+The task also includes \textbf{preliminary clustering analysis} to examine whether natural clusters correspond to schema fields, as well as comparison of alternative extraction pipelines across \textbf{two design axes}. We then evaluate these approaches in terms of \textbf{field-level extraction quality}, \textbf{coverage versus precision}, and \textbf{downstream usability}, and discuss the trade-offs and limitations of the task.
 
 \subsection{Motivation and Challenges}
 
@@ -128,13 +129,35 @@ Structured information extraction from clinical trial abstracts is valuable beca
 
 A further practical challenge is that comparator information is not always represented as clearly as the other target fields in the dataset setup used in our experiments, which makes full PICO evaluation more difficult. 
 
-A useful extraction system must therefore not only achieve good field-level performance, but also balance coverage and precision while producing outputs that remain usable for downstream querying and analysis.
+A useful extraction system should therefore not only achieve good field-level performance, but also balance coverage and precision while producing outputs that remain usable for downstream querying and analysis.
 
 \subsection{Dataset and Problem Characteristics}
 
-The EBM-NLP dataset contains clinical trial abstracts paired with annotated target fields for structured information extraction. In this task, the goal is to recover key study information from unstructured abstracts and map it into a predefined schema containing Population, Intervention, Comparator, and Outcome elements. The coursework brief also emphasises that the available data should be described clearly, with examples from the dataset where appropriate. 
+The \textbf{EBM-NLP} dataset contains clinical trial abstracts paired with annotated entities for structured information extraction. In the overall task setting, the goal is to recover key study information from unstructured abstracts and map it into a predefined schema containing \textbf{Population}, \textbf{Intervention}, \textbf{Comparator}, and \textbf{Outcome} elements. However, in the annotation setting used in our experiments, the available labels more clearly support \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome (PIO)} extraction, while comparator information is less explicitly represented. This affects both the scope of our analysis and the difficulty of full PICO evaluation.
 
-Table~\ref{tab:ebm_example} shows an example abstract together with corresponding annotated fields. This example illustrates that important information is embedded within longer biomedical sentences rather than presented in an explicitly structured format. It also shows that some fields are expressed more directly than others, while certain details may appear in compact or overlapping phrasing, making extraction non-trivial.
+In our processing pipeline, the original annotations were converted into \textbf{BIO} format in order to represent span boundaries explicitly for extraction and analysis. For the main task setting used in our experiments, these annotations were grouped into broader \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} categories. As shown in Table~\ref{tab:pio_labels}, each of these broad fields also contains finer-grained subtype labels. This means that the dataset captures not only coarse-grained PIO structure, but also more detailed semantic distinctions within each field.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{c l l l}
+\hline
+\textbf{Label} & \textbf{P} & \textbf{I} & \textbf{O} \\
+\hline
+0 & No label & No label & No label \\
+1 & Age & Surgical & Physical \\
+2 & Sex & Physical & Pain \\
+3 & Sample size & Drug & Mortality \\
+4 & Condition & Educational & Adverse effects \\
+5 &  & Psychological & Mental \\
+6 &  & Other & Other \\
+7 &  & Control &  \\
+\hline
+\end{tabular}
+\caption{Label mappings for the broad Population (P), Intervention (I), and Outcome (O) categories used in our experiments.}
+\label{tab:pio_labels}
+\end{table}
+To illustrate the task more concretely, Table~\ref{tab:ebm_example} shows an example abstract together with corresponding annotated fields. This example illustrates that important information is embedded within longer biomedical sentences rather than presented in an explicitly structured format. It also shows that some fields are expressed more directly than others, while certain details may appear in compact or overlapping phrasing, making extraction non-trivial.
 
 \begin{table}[ht]
 \centering
@@ -153,42 +176,86 @@ Outcome & efficacy and safety, cure rate of \textit{H. pylori} infection \\
 \label{tab:ebm_example}
 \end{table}
 
-This example highlights a key difficulty of the task: important trial information is embedded within continuous biomedical text rather than presented in an explicitly structured form. Some fields are expressed relatively clearly, while others may appear in compact, overlapping, or less consistently annotated forms. In our setting, comparator information is also less clearly represented than the other target fields, which makes full PICO evaluation more difficult. These characteristics make the dataset suitable for comparing alternative extraction strategies, since a useful system must cope with variation in wording, structure, and field clarity across abstracts.
+This example highlights a key difficulty of the task: important trial information is embedded within continuous biomedical text rather than presented in an explicitly structured form. Some fields are expressed relatively clearly, while others may appear in compact, overlapping, or less consistently annotated forms. In our setting, comparator information is also less clearly represented than the other target fields, which makes full PICO evaluation more difficult. Overall, these properties make the dataset a useful testbed for comparing alternative extraction strategies.
 
 
 \subsection{Requirements for a Good Solution}
 
-A good solution for this task must recover the correct target fields from unstructured clinical trial abstracts and map them into a usable structured format. This requires more than strong field-level extraction performance alone. The system should also balance coverage and precision, handle variation in wording and sentence structure across abstracts, and produce outputs that remain useful for downstream querying and analysis. For this reason, our study compares multiple extraction strategies rather than relying on a single pipeline, allowing us to examine how different design choices affect extraction quality and practical usability. The details of these strategies are presented in the following section.
+A good solution for this task should recover the correct target fields from unstructured clinical trial abstracts and map them into a usable structured format. Strong field-level extraction performance alone is not enough. The system should also balance coverage and precision, handle variation in wording and sentence structure across abstracts, and produce outputs that remain useful for downstream querying and analysis. For this reason, we compare multiple extraction strategies rather than relying on a single pipeline. The details of these strategies are presented in the following section.
 
 
 \section{Methods}
+
+This section outlines the methodological design of our study. We begin with a preliminary clustering analysis to examine the semantic structure of the annotated fields, and then describe the extraction pipelines used for comparison, including the baseline system and alternative strategy variants.
 \label{gen_inst}
 
 
-The text must be confined within a rectangle 5.5~inches (33~picas) wide and
-9~inches (54~picas) long. The left margin is 1.5~inch (9~picas).  Use 10~point
-type with a vertical spacing (leading) of 11~points.  Times New Roman is the
-preferred typeface throughout, and will be selected for you by default.
-Paragraphs are separated by \nicefrac{1}{2}~line space (5.5 points), with no
-indentation.
+\subsection{Preliminary Clustering Analysis}
+
+Before moving to the extraction stage, we first carried out a preliminary clustering analysis as an exploratory step. The aim was to examine whether the target schema fields showed any natural semantic grouping in the dataset before we designed the extraction pipelines. For this purpose, we considered \textbf{K-Means} and \textbf{hierarchical agglomerative clustering (HAC)}, which provide complementary views of latent structure: K-Means offers a simple partition-based grouping, while HAC can reveal more gradual or nested relationships between data points.
+
+In our implementation, we did not cluster full sentences directly, since a single clinical sentence may contain multiple annotated entities corresponding to different schema fields. Representing the whole sentence with a single embedding can therefore blur distinctions between entity types that are important for this task. Instead, we clustered annotated entity spans. Gold spans were first extracted from the BIO annotations for the Population, Intervention, and Outcome fields, and then encoded into dense biomedical vector representations. We applied both \textbf{K-Means} and \textbf{HAC} to these span embeddings to examine whether the annotated entity types formed separable semantic structure. This analysis was intended as a diagnostic step rather than a complete extraction method.
+
+\subsubsection{Clustering with K-Means and HAC}
+[Chen Yuan] -> you can start right here
 
 
-The paper title should be 17~point, initial caps/lower case, bold, centered
-between two horizontal rules. The top rule should be 4~points thick and the
-bottom rule should be 1~point thick. Allow \nicefrac{1}{4}~inch space above and
-below the title to rules. All pages should start at 1~inch (6~picas) from the
-top of the page.
+\subsection{Baseline Extraction System}
 
+Our baseline system is a \textbf{rule-based extraction pipeline} designed to recover \textbf{Population}, \textbf{Intervention}, \textbf{Comparator}, and \textbf{Outcome} information from clinical trial abstracts. The system combines \textbf{regular expressions}, \textbf{part-of-speech (POS) tag patterns}, and \textbf{domain-specific keyword lists} to identify candidate spans for each target field. No external machine learning models are used; instead, the method relies entirely on interpretable linguistic patterns derived from the structure of biomedical text.
 
-For the final version, authors' names are set in boldface, and each name is
-centered above the corresponding address. The lead author's name is to be listed
-first (left-most), and the co-authors' names (if different address) are set to
-follow. If there is only one co-author, list both author and co-author side by
-side.
+The main text representations and features used by the baseline are therefore the \textbf{raw abstract text}, \textbf{token sequences}, \textbf{POS tag sequences}, \textbf{regex-matched phrases}, and \textbf{domain-specific trigger keywords}. These features allow the system to detect candidate spans without relying on learned contextual representations.
 
+\subsubsection{Preprocessing}
 
-Please pay special attention to the instructions in Section \ref{others}
-regarding figures, tables, acknowledgments, and references.
+Each abstract is loaded from the EBM-NLP dataset as a plain text file (\texttt{.txt}). Two additional files are also loaded for each document: a tokenised word list (\texttt{.tokens}) and a corresponding sequence of POS tags (\texttt{.pos}), both provided by the dataset. These inputs are used directly by the rule-based pipeline during extraction.
+
+The hierarchical annotation files (\texttt{.AGGREGATED.ann}) are \textbf{not} used as inputs to the extraction process itself. Instead, they are used only to obtain \textbf{ground truth spans} for evaluation. In our experimental setting, ground truth spans for \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} are derived from these annotations, while \textbf{Comparator} ground truth is approximated using \textbf{Intervention label 7}, which corresponds to control-group spans.
+
+\subsubsection{Extraction Pipeline}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{baseline.drawio.pdf}
+    \caption{Overview of the rule-based baseline extraction pipeline. The system uses raw abstract text together with token and POS information, then applies a three-step cascade of regex matching, POS-based fallback, and keyword fallback to produce structured output fields for evaluation.}
+    \label{fig:baseline_pipeline}
+\end{figure}
+
+For each target field, the baseline system applies a \textbf{three-step priority cascade}. The extraction process starts with the most specific rules and then falls back to more general heuristics if no match is found.
+
+\textbf{Step 1: Regex patterns.}
+A set of regular expressions is applied to the raw abstract text in order of specificity, and the first successful match is returned. For example, \textit{Population} extraction first attempts to identify expressions containing a cardinal number followed by a participant-related noun, such as ``200 patients'', before falling back to broader patterns that capture patient-related phrases with nearby context.
+
+\textbf{Step 2: POS-based fallback.}
+If no regex pattern matches, the system scans the POS tag sequence for field-specific syntactic patterns. For \textit{Population}, this includes patterns such as a cardinal number tag (\texttt{CD}) followed by a singular or plural noun (\texttt{NN}/\texttt{NNS}). For \textit{Intervention} and \textit{Outcome}, the system identifies trigger verbs and collects the following noun-phrase-like tokens as candidate spans.
+
+\textbf{Step 3: Keyword fallback.}
+If both previous steps fail, the system returns a keyword match from a predefined domain vocabulary. For example, \textit{Outcome} extraction falls back to terms such as ``mortality'', ``pain'', or ``blood pressure''.
+
+Table~\ref{tab:baseline_rules} provides representative examples of the main rule types used for each field, rather than an exhaustive list of all implemented patterns.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{p{0.16\linewidth} p{0.24\linewidth} p{0.22\linewidth} p{0.24\linewidth}}
+\hline
+\textbf{Field} & \textbf{Regex (Step 1)} & \textbf{POS (Step 2)} & \textbf{Keyword (Step 3)} \\
+\hline
+Population & number + participant noun & \texttt{CD} + \texttt{NN}/\texttt{NNS} & patients, subjects \\
+Intervention & treatment trigger + following phrase & trigger verb + noun phrase & therapy, treatment \\
+Comparator & comparative marker + following phrase & placebo/sham + noun phrase & placebo, control group \\
+Outcome & outcome trigger + following phrase & trigger verb + noun phrase & mortality, pain \\
+\hline
+\end{tabular}
+\caption{Representative examples of the main rule types used in the baseline extraction system. The table is illustrative rather than exhaustive.}
+\label{tab:baseline_rules}
+\end{table}
+
+These examples are intended to illustrate the overall rule design. In practice, each field is handled by a broader set of regex patterns, POS-based heuristics, and fallback keywords.
+
+\subsubsection{Limitations of the Baseline}
+
+The rule-based system outputs only a single span per field, which limits recall when multiple spans are present in the ground truth annotations. In addition, the method is sensitive to wording variation and cannot reliably resolve lexical ambiguity. For example, the conjunction ``or'' may indicate a true comparator relation, as in ``drug A or placebo'', but it may also simply connect related expressions, such as ``efficacy or safety'', leading to false positives in comparator extraction. More generally, because the system depends on handcrafted lexical and syntactic patterns, it may struggle when important information is expressed indirectly, distributed across sentences, or described using wording not covered by the predefined rules.
 
 \section{Experimental evaluation}
 \label{headings}
