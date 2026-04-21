@@ -257,6 +257,27 @@ These examples are intended to illustrate the overall rule design. In practice, 
 
 The rule-based system outputs only a single span per field, which limits recall when multiple spans are present in the ground truth annotations. In addition, the method is sensitive to wording variation and cannot reliably resolve lexical ambiguity. For example, the conjunction ``or'' may indicate a true comparator relation, as in ``drug A or placebo'', but it may also simply connect related expressions, such as ``efficacy or safety'', leading to false positives in comparator extraction. More generally, because the system depends on handcrafted lexical and syntactic patterns, it may struggle when important information is expressed indirectly, distributed across sentences, or described using wording not covered by the predefined rules.
 
+\subsection{Axes of Experimentation}
+
+To examine how different design choices affect extraction performance, we compared our methods along two main experimental axes. The first axis focuses on the \textbf{extraction approach}, comparing the rule-based baseline with \textbf{LLM-based} strategies such as zero-shot and few-shot prompting. The second axis focuses on \textbf{pipeline design}, comparing \textbf{end-to-end} extraction with a more \textbf{decomposed} multi-step pipeline. Figure~\ref{fig:axes_of_experimentation} summarises these two axes and the main variants explored in our study.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.85\linewidth]{axisofexperiment.drawio.pdf}
+    \caption{Summary of the two experimental axes explored in this study. Axis 1 compares rule-based and LLM-based extraction strategies, while Axis 2 compares end-to-end and decomposed pipeline designs.}
+    \label{fig:axes_of_experimentation}
+\end{figure}
+
+\subsubsection{Axis 1: Rule-based vs LLM-based Extraction}
+
+The first experimental axis compares \textbf{rule-based} and \textbf{LLM-based} extraction strategies. This axis was chosen to examine the trade-off between explicit handcrafted patterns and more flexible language-model-based extraction. The rule-based baseline relies on regex rules, POS-based heuristics, and keyword matching, which are expected to work well when relevant information is expressed using predictable lexical or syntactic patterns. However, this approach may struggle when the wording is indirect, highly variable, or spread across longer contexts.
+
+\paragraph{Proposed improvements.}
+Along this axis, our main proposed improvements are the use of \textbf{zero-shot} and \textbf{few-shot} LLM prompting as alternatives to the rule-based baseline. The zero-shot setting allows the model to extract field information without task-specific examples, while the few-shot setting provides a small number of demonstrations to guide the model towards the intended schema. These approaches are intended to improve extraction coverage by handling broader linguistic variation and by capturing field-relevant information that is not explicitly covered by handcrafted rules. Because large language models are pretrained on large-scale text corpora, they may capture richer semantic and contextual patterns, which could be especially helpful when target information is expressed indirectly or in less predictable forms.
+
+\paragraph{Hypotheses.}
+We hypothesise that the \textbf{rule-based baseline} may achieve relatively high precision on clearly structured and lexically predictable abstracts, but may have limited recall when field information is expressed in less regular forms. In contrast, the \textbf{zero-shot LLM} is expected to offer better flexibility and coverage, although its outputs may be less stable or schema-consistent. The \textbf{few-shot LLM} is expected to perform better than zero-shot prompting, since the additional examples should help the model follow the required output structure more closely and distinguish the target fields more consistently.
+
 \section{Experimental evaluation}
 \label{headings}
 
