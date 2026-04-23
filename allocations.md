@@ -18,5 +18,6 @@ rule-based approaches versus LLMs. :-
 Priyanshu Gurjar and Vikrant Nitin Deshmukh
 - Design and implement an information extraction pipeline: Working on axes 2;
 end-to-end models versus decomposing. :-
-1.
+1.Decomposing : Priyanshu
+2.end-to-end : Vikrant
 
