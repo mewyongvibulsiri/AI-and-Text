@@ -104,7 +104,6 @@
 
 \maketitle
 
-
 \begin{abstract}
   (Template)The abstract paragraph should be indented \nicefrac{1}{2}~inch (3~picas) on both the left- and right-hand margins. Use 10~point type, with a vertical spacing (leading) of 11~points. The word \textbf{Abstract} must be centered, bold, and in point size 12. Two line spaces precede the abstract. The abstract must be limited to one paragraph.
 \end{abstract}
@@ -189,15 +188,30 @@ A good solution for this task should recover the correct target fields from unst
 This section outlines the methodological design of our study. We begin with a preliminary clustering analysis to examine the semantic structure of the annotated fields, and then describe the extraction pipelines used for comparison, including the baseline system and alternative strategy variants.
 \label{gen_inst}
 
-
 \subsection{Preliminary Clustering Analysis}
 
-Before moving to the extraction stage, we first carried out a preliminary clustering analysis as an exploratory step. The aim was to examine whether the target schema fields showed any natural semantic grouping in the dataset before we designed the extraction pipelines. For this purpose, we considered \textbf{K-Means} and \textbf{hierarchical agglomerative clustering (HAC)}, which provide complementary views of latent structure: K-Means offers a simple partition-based grouping, while HAC can reveal more gradual or nested relationships between data points.
+Before moving to the extraction stage, we first carried out a preliminary clustering analysis as an exploratory step. The aim was to examine whether the target schema fields showed any natural semantic grouping in the dataset before we designed the extraction pipelines. For this purpose, we applied \textbf{K-Means clustering}, which provides a simple partition-based grouping to examine latent structure in the data.
 
-In our implementation, we did not cluster full sentences directly, since a single clinical sentence may contain multiple annotated entities corresponding to different schema fields. Representing the whole sentence with a single embedding can therefore blur distinctions between entity types that are important for this task. Instead, we clustered annotated entity spans. Gold spans were first extracted from the BIO annotations for the Population, Intervention, and Outcome fields, and then encoded into dense biomedical vector representations. We applied both \textbf{K-Means} and \textbf{HAC} to these span embeddings to examine whether the annotated entity types formed separable semantic structure. This analysis was intended as a diagnostic step rather than a complete extraction method.
+In our implementation, we did not cluster full sentences directly, since a single clinical sentence may contain multiple annotated entities corresponding to different schema fields. Representing the whole sentence with a single embedding can therefore blur distinctions between entity types that are important for this task. Instead, we clustered \textbf{annotated entity spans}. Gold spans were first extracted from the for the \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} fields, and then encoded into dense \textbf{biomedical vector representations}. We applied K-Means to these span embeddings to examine whether the annotated entity types formed separable semantic structure. This analysis was intended as a \textbf{diagnostic step} rather than a complete extraction method.
 
-\subsubsection{Clustering with K-Means and HAC}
-[Chen Yuan] -> you can start right here
+\subsubsection{Clustering with K-Means}
+
+In this part, we used K-Means clustering to check whether the embedded text spans could naturally form groups similar to the three target entity types: Population, Intervention, and Outcome. The clustering data was created by combining the tokenised spans from these three categories into one dataset. In total, the dataset contained 14,036 text spans. Each span was then represented as a dense embedding using the BioLORD-2023 model, giving a numerical vector for each text span.
+
+Because the extraction task focuses on three entity types, we set the number of clusters to three. After the clustering process, we used UMAP to reduce the high-dimensional embeddings into two dimensions. This made it possible to visualise the clustering results and compare them with the original Population, Intervention, and Outcome labels, as shown in Figure~\ref{fig:k_means_output}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\columnwidth]{k_means_output.png}
+\caption{UMAP visualisation of BioLORD-2023 embeddings for 14,036 PICO spans. Left: true P/I/O labels. Right: K-Means cluster assignments (k=3).}
+\label{fig:kmeans_umap}
+\end{figure}
+
+The UMAP visualisation of the true labels shows that the three entity types are heavily mixed together. Population, Intervention, and Outcome points appear in the same general regions rather than forming three clearly separated areas. This suggests that the semantic difference between the three categories is not strong enough to be captured by simple unsupervised clustering. In clinical abstracts, this is understandable because P, I, and O phrases often share similar medical vocabulary and sentence context. For example, patient groups, treatments, and outcomes may all contain related disease names, measurements, or clinical terms.
+
+The K-Means result shows a geometric division of the embedding space, but this division does not match the true entity labels well. This can be seen from the evaluation scores, where K-Means achieved an Adjusted Rand Index of 0.1629 and a Normalized Mutual Information score of 0.1929, with a Silhouette Score of 0.0409. While these values indicate a weak but non-trivial agreement with the true labels, the overall alignment remains poor, and the low Silhouette Score further confirms that the clusters are not well-separated in the embedding space.
+
+Overall, the clustering results show that the embedded spans do not naturally separate into the three target entity types. K-Means mainly captured broad geometric patterns in the embedding space rather than the real semantic categories required for the extraction task. Therefore, this clustering analysis was useful as a diagnostic step, because it showed that unsupervised clustering alone is not sufficient for identifying Population, Intervention, and Outcome entities. This result supports the need for a more targeted extraction method in the following stage, rather than relying only on cluster membership.
 
 
 \subsection{Baseline Extraction System}
@@ -278,43 +292,95 @@ Along this axis, our main proposed improvements are the use of \textbf{zero-shot
 \paragraph{Hypotheses.}
 We hypothesise that the \textbf{rule-based baseline} may achieve relatively high precision on clearly structured and lexically predictable abstracts, but may have limited recall when field information is expressed in less regular forms. In contrast, the \textbf{zero-shot LLM} is expected to offer better flexibility and coverage, although its outputs may be less stable or schema-consistent. The \textbf{few-shot LLM} is expected to perform better than zero-shot prompting, since the additional examples should help the model follow the required output structure more closely and distinguish the target fields more consistently.
 
+\subsubsection{Axis 2: End-to-end vs Decomposed Extraction}
+The second experimental axis compares \textbf{end-to-end} and \textbf{decomposed extraction} pipelines. This comparison was designed to examine whether structured information extraction is better handled as a single direct prediction problem or as a sequence of smaller, more focused subtasks. We first implemented the end-to-end pipeline as a direct baseline, where the model predicts token-level labels in one stage under zero-shot, few-shot, and full-train settings. We then implemented the decomposed pipeline and evaluated it under the same settings, allowing us to compare both formulations consistently across the three schema fields and to interpret their extraction behaviour in relation to one another.
+
+\paragraph{Proposed improvements.} Our main proposed improvement along this axis is the \textbf{decomposed design}. While the \textbf{end-to-end} approach is simpler and more compact, it requires a single model to learn span detection, boundary identification, and field discrimination simultaneously. In contrast, the decomposed pipeline breaks the task into smaller stages, such as identifying broader relevant units before performing more focused extraction within them. This staged design is intended to reduce noise, narrow the prediction space, and make the extraction problem easier to learn. The results support this motivation: in the \textbf{zero-shot setting}, the end-to-end and decomposed approaches produced very similar results, whereas in both the few-shot and full-train settings, the decomposed approach performed slightly better overall.
+
+\paragraph{Hypotheses.} We hypothesise that the end-to-end pipeline can perform well when relevant information is expressed clearly and the model is able to learn stable token-level patterns directly from the data. However, its performance may be limited when the task requires handling multiple forms of variation at once. By contrast, the \textbf{decomposed pipeline} is expected to perform better when some supervision is available, because each stage addresses a narrower subproblem and can make more effective use of the training signal. At the same time, decomposition may introduce error propagation if relevant content is missed in an earlier stage. For this reason, we expected little difference between the two approaches in the zero-shot setting, but anticipated that the decomposed method would become more advantageous in the \textbf{few-shot} and \textbf{full-train settings}.
 \section{Experimental evaluation}
 \label{headings}
 
+\subsection{Axis 1: Rule-based vs LLM-based Extraction}
 
-All headings should be lower case (except for first word and proper nouns),
-flush left, and bold.
+\subsubsection{Performance Metrics}
+
+We evaluate all extraction methods using token-level partial match F1, which measures the degree of token overlap between a predicted span and the pooled set of gold-annotated spans for each field. Precision is computed as the fraction of predicted tokens appearing in the gold token set, recall as the fraction of gold tokens covered by the prediction, and F1 as their harmonic mean. This metric was chosen because clinical trial abstracts frequently contain long, multi-token spans, and exact string matching would penalise semantically correct extractions that differ only in boundary placement. We additionally report span-level coverage, defined as the proportion of gold spans for which at least one predicted token overlaps, and downstream usability, measured by the frequency of predefined field-relevant keywords in the extracted outputs.
+
+\subsubsection{Experimental Setup}
+
+All methods were evaluated on the 184 test documents common to all three EBM-NLP entity types (Population, Intervention, Outcome), with Comparator ground truth approximated using Intervention label 7 as described in Section 2.2. No training data was used for the rule-based baseline or the LLM-based methods; both Claude zero-shot and few-shot variants were evaluated in a fully held-out setting without fine-tuning.
+
+For the LLM-based approaches, we used \texttt{claude-sonnet-4-6} via the Anthropic API\footnote{\url{https://www.anthropic.com/api}}. The zero-shot prompt instructed the model to extract PICO elements and return results in JSON format, with each value required to be a phrase copied directly from the abstract.\footnote{System instruction: ``You are a medical information extraction system. Extract the PICO elements from the following clinical trial abstract. Return the result in JSON format with keys: Population, Intervention, Comparator, Outcome. Each value must be a phrase copied EXACTLY from the abstract. Use null if not found.''} The few-shot prompt extended this with five manually selected demonstration examples drawn from training documents. Notably, the demonstrations used a short \texttt{P/I/C/O} label format rather than JSON, introducing a format mismatch between the examples and the requested output structure, which may partly explain the modest gain of few-shot over zero-shot. The rule-based baseline was applied directly to the tokenised test documents using the cascade described in Section 2.2.2.
+
+\subsubsection{Results}
+
+Table~\ref{tab:axis1_results} reports token-level F1, precision, and recall for all three methods across the four PICO fields.
+
+\begin{table}[h]
+\centering
+\caption{Token-level partial match F1, Precision, and Recall for Axis 1 methods across PICO fields on the 184-document test set.}
+\label{tab:axis1_results}
+\begin{tabular}{lcccccccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Rule-based}} & \multicolumn{3}{c}{\textbf{Zero-shot}} & \multicolumn{3}{c}{\textbf{Few-shot}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10}
+\textbf{Field} & P & R & F1 & P & R & F1 & P & R & F1 \\
+\midrule
+Population    & 0.59 & 0.18 & 0.25 & 0.86 & 0.55 & 0.63 & 0.88 & 0.50 & 0.60 \\
+Intervention  & 0.18 & 0.25 & 0.17 & 0.44 & 0.41 & 0.36 & 0.54 & 0.41 & 0.39 \\
+Comparator    & 0.43 & 0.47 & 0.40 & 0.66 & 0.66 & 0.59 & 0.73 & 0.66 & 0.65 \\
+Outcome       & 0.26 & 0.15 & 0.16 & 0.50 & 0.32 & 0.34 & 0.63 & 0.30 & 0.36 \\
+\midrule
+\textbf{Overall} & 0.35 & 0.22 & 0.21 & 0.61 & 0.45 & 0.46 & 0.69 & 0.43 & 0.47 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both LLM-based methods substantially outperform the rule-based baseline across all fields, with overall token F1 more than doubling from 0.21 to approximately 0.46--0.47. The largest gains are observed for Population and Comparator, where rule-based recall is lowest (0.18 and 0.47 respectively), suggesting these fields benefit most from the broader contextual understanding of the LLM. Few-shot offers modest but consistent gains over zero-shot for Comparator (0.59 $\rightarrow$ 0.65) and Intervention (0.36 $\rightarrow$ 0.39), while Population shows a slight drop (0.63 $\rightarrow$ 0.60). Span-level coverage confirms this pattern: the rule-based system covers only 43.8\% of Population gold spans and 27.0\% of Outcome spans, compared to 77.6\% and 49.0\% for Claude zero-shot. Despite this improvement, Outcome coverage remains below 50\% across all methods, reflecting the difficulty of a field whose annotations are numerous and heterogeneous (1,168 gold spans across 184 documents).
+
+\begin{table}[h]
+\centering
+\caption{Span-level coverage for Axis 1 methods across PICO fields on the 184-document test set.}
+\label{tab:axis1_coverage}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Field} & \textbf{Rule-based} & \textbf{Zero-shot} & \textbf{Few-shot} \\
+\midrule
+Population   & 43.8\% & 77.6\% & 76.0\% \\
+Intervention & 35.1\% & 55.8\% & 54.1\% \\
+Comparator   & 55.6\% & 75.6\% & 73.3\% \\
+Outcome      & 27.0\% & 49.0\% & 48.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The downstream usability analysis reveals a consistent limitation across all methods. Population extraction performs reasonably well, with ``patients'' appearing in approximately 50\% of documents, while Comparator is relatively consistent with ``placebo'' appearing in 19.0--21.2\% of documents. However, Outcome shows near-zero coverage of standard clinical keywords such as ``mortality'' and ``quality of life'' across all methods, suggesting that even the LLM tends to extract overly specific phrases rather than canonical clinical terminology.
 
 
-First-level headings should be in 12-point type.
+\subsubsection{Error Analysis}
 
+A concrete illustration of rule-based failure modes is provided by a document comparing budesonide Turbuhaler with budesonide aqua for seasonal allergic rhinitis. The rule-based system extracts ``400 microg/day'' as the Population span, a consequence of its cardinal-number-plus-noun POS pattern matching a dosage figure rather than a participant description. For Intervention, the system returns an over-extended span conflating both treatment arms, and Comparator extraction returns null entirely as no comparative marker pattern fires. By contrast, both Claude zero-shot and few-shot correctly identify the patient population, intervention, and comparator spans.
 
-\subsection{Headings: second level}
+For the LLM-based methods, the dominant error is boundary over-extension in Outcome extraction, where the zero-shot model returns a full result sentence while the few-shot model returns a more focused noun phrase. A further error pattern is field confusion in the rule-based system, where ``placebo'' is frequently misassigned to the Intervention field rather than Comparator, a problem largely absent in both LLM-based methods. Together, these error patterns suggest that while LLM-based methods handle lexical variability more robustly, precise boundary control and schema consistency remain challenging across all approaches.
 
+\subsubsection{Discussion}
 
-Second-level headings should be in 10-point type.
+The results clearly support the hypothesis that LLM-based extraction provides better coverage and F1 than the rule-based baseline, particularly where relevant information is expressed variably or indirectly. The few-shot setting offers consistent but modest gains, most evident for Comparator (0.59 $\rightarrow$ 0.65) and Intervention (0.36 $\rightarrow$ 0.39). The Population drop under few-shot (0.63 $\rightarrow$ 0.60) may reflect sensitivity to the format mismatch between the \texttt{P/I/C/O} demonstration format and the requested JSON output structure.
 
+A shared limitation is the single-span-per-field constraint, which structurally caps recall regardless of extraction quality. We explored a multi-span variant in which the LLM returned a list of spans per field; while coverage improved, precision dropped substantially as the model hallucinated spans in fields with limited evidence, particularly for Comparator. This suggests multi-span extraction requires more careful prompt design or output validation to prevent over-generation.
 
-\subsubsection{Headings: third level}
-
-
-Third-level headings should be in 10-point type.
-
-
-\paragraph{Paragraphs}
-
-
-There is also a \verb+\paragraph+ command available, which sets the heading in
-bold, flush left, and inline with the text, with the heading followed by 1\,em
-of space.
+\subsection{Axis 2: End-to-end vs Decomposed Extraction}
 
 
 \section{Conclusions}
 \label{others}
 
+For Axis 1, the results demonstrate clearly that LLM-based extraction substantially outperforms the rule-based baseline across all PICO fields, with overall token-level F1 more than doubling from 0.21 to approximately 0.46--0.47. The most significant gains were observed for Population and Comparator, where the rule-based system struggled most with lexical variability and boundary detection. The concrete failure modes of the rule-based approach, such as extracting dosage figures as Population spans due to cardinal-number POS patterns, conflating intervention and comparator arms into a single span, and returning null for Comparator when no explicit comparative marker was present, highlight the fundamental brittleness of handcrafted rules when applied to the diverse phrasing of clinical trial abstracts. That said, the rule-based system did achieve moderate precision for Comparator and Population when patterns were predictable, suggesting it may still be useful as a lightweight fallback in constrained settings.
 
-These instructions apply to everyone.
+Few-shot prompting offered consistent but modest improvements over zero-shot, most evident for Comparator and Intervention. However, the gains were smaller than anticipated, which we attribute partly to a format mismatch between the \texttt{P/I/C/O} label format used in the demonstration examples and the JSON output structure requested in the prompt. This finding highlights the sensitivity of few-shot LLM performance to the consistency between demonstration format and output format, and suggests that more carefully aligned examples could yield larger improvements.
 
+Despite the clear advantage of LLM-based methods, several challenges remain open. Recall remains structurally limited by the single-span-per-field constraint, as the ground truth frequently contains multiple non-contiguous spans per field. Our exploration of a multi-span extraction variant showed that prompting the model to return lists of spans improved coverage but introduced hallucination, particularly for fields with fewer annotated spans such as Comparator, where the model over-generated additional spans likely influenced by the distribution of the more span-rich fields it had been exposed to during pretraining. Downstream usability analysis further revealed that even the best-performing LLM variant extracted overly specific outcome phrases that do not align with canonical clinical terminology, limiting their utility for aggregation or querying. Addressing these challenges through better output validation, post-processing, or more structured prompting strategies remains an important direction for future work.
 
 \subsection{Citations within the text}
 
