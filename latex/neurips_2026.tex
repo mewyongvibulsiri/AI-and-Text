@@ -105,7 +105,7 @@
 \maketitle
 
 \begin{abstract}
-  In task2
+  This project is about structured information extraction from clinical abstracts using the EBM-NLP dataset, with the goal of categorising Population, Intervention, Comparator, and Outcome (PICO) elements from unstructured text. The core challenge lies in the lexical variability of biomedical language, where target information is frequently expressed indirectly, distributed across sentences, or annotated inconsistently across fields. A preliminary clustering analysis confirmed that PICO entity types do not naturally separate into clusters in the embedding space, motivating the use of more strategic extraction approaches. We designed two axes: rule-based versus LLM-based extraction, and end-to-end versus decomposed pipelines. LLM-based methods using Claude Sonnet substantially outperformed the rule-based baseline, with overall token F1 improving from 0.21 to 0.47. The decomposed pipeline achieved strong Intervention extraction (F1 = 0.35) but did not succeed on Population and Comparator in the few-shot setting. Across both axes, Outcome extraction remained the most difficult field, with coverage below 50\% for all methods. These suggest that prompt-based LLM extraction is the most practical approach in low-resource settings, but further gains and more improvements would likely require fine-tuning or richer supervision.
 \end{abstract}
 
 
@@ -117,22 +117,22 @@ The abstracts of clinical trials contain important information about study desig
 \subsection{Task Overview}
 
 
-This project addresses the task of \textbf{structured information extraction} from clinical trial abstracts in the \textbf{EBM-NLP} dataset. The objective is to identify and extract \textbf{Population, Intervention, Comparator, and Outcome (PICO)} information from unstructured abstracts and represent it in a predefined schema. The task also includes \textbf{preliminary clustering analysis} to examine whether natural clusters correspond to schema fields, as well as comparison of alternative extraction pipelines across \textbf{two design axes}. We then evaluate these approaches in terms of \textbf{field-level extraction quality}, \textbf{coverage versus precision}, and \textbf{downstream usability}, and discuss the trade-offs and limitations of the task.
+This project addresses the task of \textbf{structured information extraction} from clinical trial abstracts in the \textbf{EBM-NLP} [1] dataset. The objective is to identify and extract \textbf{Population, Intervention, Comparator, and Outcome (PICO)} information from unstructured abstracts and represent it in a schema. The task also includes \textbf{preliminary clustering analysis} to examine whether natural clusters correspond to schema fields, as well as comparison of alternative extraction pipelines across \textbf{two design axes}. We then evaluate these approaches in terms of \textbf{field-level extraction quality}, \textbf{coverage versus precision}, and \textbf{downstream usability}, and discuss the trade-offs and limitations of the task.
 
 \subsection{Motivation and Challenges}
 
 
-Structured information extraction from clinical trial abstracts is valuable because important study details are often buried in free-text descriptions. Automatically identifying key fields such as Population, Intervention, Comparator, and Outcome can make trial evidence easier to organise and analyse at scale. However, this task is challenging because clinical abstracts are written in varied and compact language, and relevant information may be distributed across multiple sentences rather than stated in a single standard form. In addition, some fields can overlap semantically or be difficult to distinguish clearly, particularly when interventions and comparators are described in similar ways. 
+An extraction of structured information from clinical trial abstracts is valuable because important study details are frequently buried in free-text descriptions. Automatically identifying key fields such as Population, Intervention, Comparator, and Outcome can make trial evidence easier to manage and analyse at scale. However, this task is challenging because clinical abstracts are written in varied and compact language, and relevant information is probably distributed across various sentences rather than stated in a single standard form. Moreover, some fields can overlap semantically or be difficult to distinguish, particularly when interventions and comparators are described in similar ways. 
 
-A further practical challenge is that comparator information is not always represented as clearly as the other target fields in the dataset setup used in our experiments, which makes full PICO evaluation more difficult. 
+A further practical challenge is that comparator information is not represented as clearly as the other target fields in the dataset setup used in our experiments, which makes full PICO evaluation more difficult. 
 
-A useful extraction system should therefore not only achieve good field-level performance, but also balance coverage and precision while producing outputs that remain usable for downstream querying and analysis.
+A useful extraction system should not only require good field-level performance, but also balance between coverage and precision, while generating outputs that remain usable for downstream querying and analysis.
 
 \subsection{Dataset and Problem Characteristics}
 
-The \textbf{EBM-NLP} dataset contains clinical trial abstracts paired with annotated entities for structured information extraction. In the overall task setting, the goal is to recover key study information from unstructured abstracts and map it into a predefined schema containing \textbf{Population}, \textbf{Intervention}, \textbf{Comparator}, and \textbf{Outcome} elements. However, in the annotation setting used in our experiments, the available labels more clearly support \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome (PIO)} extraction, while comparator information is less explicitly represented. This affects both the scope of our analysis and the difficulty of full PICO evaluation.
+The \textbf{EBM-NLP} dataset contains clinical trial abstracts paired with annotated entities for structured information extraction. In the overall task setting, we aim to recover key study information from unstructured abstracts and map it into a predefined schema containing \textbf{Population}, \textbf{Intervention}, \textbf{Comparator}, and \textbf{Outcome} elements. However, in the annotation setting used in our experiments, the available labels more clearly support \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome (PIO)} extraction, while comparator information is not explicitly shown. This affects both the scope of our analysis and the difficulty of a full PICO extraction and evaluation.
 
-In our processing pipeline, the original annotations were converted into \textbf{BIO} format in order to represent span boundaries explicitly for extraction and analysis. For the main task setting used in our experiments, these annotations were grouped into broader \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} categories. As shown in Table~\ref{tab:pio_labels}, each of these broad fields also contains finer-grained subtype labels. This means that the dataset captures not only coarse-grained PIO structure, but also more detailed semantic distinctions within each field.
+In our processing pipeline, the original annotations were converted into \textbf{BIO} format in order to represent span boundaries explicitly for extraction and analysis. For the main task setting in our experiments, these annotations were grouped into broader \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} categories. As shown in Table~\ref{tab:pio_labels}, each field also contains subtype labels. This means that the dataset captures not only the top PIO structure, but also more detailed semantic distinctions within each field.
 
 \begin{table}[ht]
 \centering
@@ -154,7 +154,7 @@ In our processing pipeline, the original annotations were converted into \textbf
 \caption{Label mappings for the broad Population (P), Intervention (I), and Outcome (O) categories used in our experiments.}
 \label{tab:pio_labels}
 \end{table}
-To illustrate the task more concretely, Table~\ref{tab:ebm_example} shows an example abstract together with corresponding annotated fields. This example illustrates that important information is embedded within longer biomedical sentences rather than presented in an explicitly structured format. It also shows that some fields are expressed more directly than others, while certain details may appear in compact or overlapping phrasing, making extraction non-trivial.
+To illustrate the task more clearly, Table~\ref{tab:ebm_example} shows an example abstract together with corresponding annotated fields. This example shows that important information is embedded within longer biomedical sentences more than presented in a structured format. So, some fields are expressed more directly than others, while certain details may appear in compact or overlapping phrasing, making extraction non-trivial.
 
 \begin{table}[ht]
 \centering
@@ -173,56 +173,50 @@ Outcome & efficacy and safety, cure rate of \textit{H. pylori} infection \\
 \label{tab:ebm_example}
 \end{table}
 
-This example highlights a key difficulty of the task: important trial information is embedded within continuous biomedical text rather than presented in an explicitly structured form. Some fields are expressed relatively clearly, while others may appear in compact, overlapping, or less consistently annotated forms. In our setting, comparator information is also less clearly represented than the other target fields, which makes full PICO evaluation more difficult. Overall, these properties make the dataset a useful testbed for comparing alternative extraction strategies.
-
 
 \subsection{Requirements for a Good Solution}
 
-A good solution for this task should recover the correct target fields from unstructured clinical trial abstracts and map them into a usable structured format. Strong field-level extraction performance alone is not enough. The system should also balance coverage and precision, handle variation in wording and sentence structure across abstracts, and produce outputs that remain useful for downstream querying and analysis. For this reason, we compare multiple extraction strategies rather than relying on a single pipeline. The details of these strategies are presented in the following section.
+Hence, a good solution for this task should cover the correct target fields from unstructured clinical trial abstracts and map them into a usable structured format. Only a strong field-level extraction performance alone is not enough. The system should also balance coverage and precision, handle variation in wording and sentence structure across abstracts, and generate outputs that remain useful for downstream querying. For these reasons, we compare multiple extraction axes to perform the best possible information extraction. The details of these strategies are presented in the following section.
 
 
 \section{Methods}
 
-This section outlines the methodological design of our study. We begin with a preliminary clustering analysis to examine the semantic structure of the annotated fields, and then describe the extraction pipelines used for comparison, including the baseline system and alternative strategy variants.
+In this section, we outline the methodological design of our study. Beginning with a preliminary clustering analysis to examine the semantic structure of the annotated fields, and then describing the extraction pipelines used for comparison, including the baseline system and alternative strategy variants to improve our work.
 \label{gen_inst}
 
 \subsection{Preliminary Clustering Analysis}
 
-Before moving to the extraction stage, we first carried out a preliminary clustering analysis as an exploratory step. The aim was to examine whether the target schema fields showed any natural semantic grouping in the dataset before we designed the extraction pipelines. For this purpose, we applied \textbf{K-Means clustering}, which provides a simple partition-based grouping to examine latent structure in the data.
+Before moving to the extraction stage, we first carried out a preliminary clustering analysis as an early exploratory step. This aims to examine whether the target schema fields showed any natural semantic grouping in the dataset before we designed the extraction pipelines. To investigate latent structure in the data, we used \textbf{K-Means clustering}, which offers a straightforward partition-based grouping.
 
-In our implementation, we did not cluster full sentences directly, since a single clinical sentence may contain multiple annotated entities corresponding to different schema fields. Representing the whole sentence with a single embedding can therefore blur distinctions between entity types that are important for this task. Instead, we clustered \textbf{annotated entity spans}. Gold spans were first extracted from the for the \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} fields, and then encoded into dense \textbf{biomedical vector representations}. We applied K-Means to these span embeddings to examine whether the annotated entity types formed separable semantic structure. This analysis was intended as a \textbf{diagnostic step} rather than a complete extraction method.
+In our implementation, we did not cluster full sentences directly, since most single sentences contain multiple annotated entities corresponding to different schema fields. Using the whole sentence with a single embedding can therefore lead to unclear distinctions between entity types that are important for this task. Instead of that approach, we clustered \textbf{annotated entity spans}. This step was intended as a diagnostic step rather than a complete extraction method."
 
 \subsubsection{Clustering with K-Means}
 
-In this part, we used K-Means clustering to check whether the embedded text spans could naturally form groups similar to the three target entity types: Population, Intervention, and Outcome. The clustering data was created by combining the tokenised spans from these three categories into one dataset. In total, the dataset contained 14,036 text spans. Each span was then represented as a dense embedding using the BioLORD-2023 model, giving a numerical vector for each text span.
+In this part, we used K-Means clustering to check whether the embedded text spans could naturally form groups similar to the three target entity types: Population, Intervention, and Outcome. The clustering data was created by combining the tokenised spans from these three categories into one dataset. In total, the dataset contained 14,036 text spans. Each span was then represented as a dense embedding using the BioLORD-2023 model [2], giving a numerical vector for each text span.
 
-Because the extraction task focuses on three entity types, we set the number of clusters to three. After the clustering process, we used UMAP to reduce the high-dimensional embeddings into two dimensions. This made it possible to visualise the clustering results and compare them with the original Population, Intervention, and Outcome labels, as shown in Figure~\ref{fig:k_means_output}.
+Because the extraction task focuses on three entity types, we set the number of clusters to three. After the clustering process, we used UMAP to reduce the high-dimensional embeddings into two dimensions. This made it possible to visualise the clustering results and compare them with the original Population, Intervention, and Outcome labels, as shown in Figure~\ref{fig:kmeans_umap}.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.75\columnwidth]{k_means_output.png}
-\caption{UMAP visualisation of BioLORD-2023 embeddings for 14,036 PICO spans. Left: true P/I/O labels. Right: K-Means cluster assignments (k=3).}
+\includegraphics[width=0.9\columnwidth]{k_means_output.png}
+\caption{UMAP visualisation of BioLORD-2023 embeddings for 14,036 PIO spans. Left: true P/I/O labels. Right: K-Means cluster assignments (k=3).}
 \label{fig:kmeans_umap}
 \end{figure}
 
-The UMAP visualisation of the true labels shows that the three entity types are heavily mixed together. Population, Intervention, and Outcome points appear in the same general regions rather than forming three clearly separated areas. This suggests that the semantic difference between the three categories is not strong enough to be captured by simple unsupervised clustering. In clinical abstracts, this is understandable because P, I, and O phrases often share similar medical vocabulary and sentence context. For example, patient groups, treatments, and outcomes may all contain related disease names, measurements, or clinical terms.
+The visualisation of the true labels shows that the three entity types are heavily mixed together because most points appear in the same general locations rather than forming three clearly separated areas. This suggests that the semantic difference between the three categories is not strong enough to be captured by simple unsupervised clustering. In clinical abstracts, this is understandable because P, I, and O phrases often share similar medical vocabulary and context. For example, patient groups, treatments, and outcomes may all contain related disease names, measurements, or clinical terms.
 
-The K-Means result shows a geometric division of the embedding space, but this division does not match the true entity labels well. This can be seen from the evaluation scores, where K-Means achieved an Adjusted Rand Index of 0.1629 and a Normalized Mutual Information score of 0.1929, with a Silhouette Score of 0.0409. While these values indicate a weak but non-trivial agreement with the true labels, the overall alignment remains poor, and the low Silhouette Score further confirms that the clusters are not well-separated in the embedding space.
-
-Overall, the clustering results show that the embedded spans do not naturally separate into the three target entity types. K-Means mainly captured broad geometric patterns in the embedding space rather than the real semantic categories required for the extraction task. Therefore, this clustering analysis was useful as a diagnostic step, because it showed that unsupervised clustering alone is not sufficient for identifying Population, Intervention, and Outcome entities. This result supports the need for a more targeted extraction method in the following stage, rather than relying only on cluster membership.
+Furthermore, the K-Means result shows a geometric division of the embedding space, but this division does not match the true entity labels well enough. Because of the evaluation scores, K-Means achieved an Adjusted Rand Index of 0.1629 and a Normalized Mutual Information score of 0.1929, with a Silhouette Score of 0.0409. While these values indicate a weak but non-trivial agreement with the true labels, the overall alignment remains poor, and the low Silhouette Score also confirms that the clusters are not well-separated in the embedding space.
 
 
 \subsection{Baseline Extraction System}
 
-Our baseline system is a \textbf{rule-based extraction pipeline} designed to recover \textbf{Population}, \textbf{Intervention}, \textbf{Comparator}, and \textbf{Outcome} information from clinical trial abstracts. The system combines \textbf{regular expressions}, \textbf{part-of-speech (POS) tag patterns}, and \textbf{domain-specific keyword lists} to identify candidate spans for each target field. No external machine learning models are used; instead, the method relies entirely on interpretable linguistic patterns derived from the structure of biomedical text.
-
-The main text representations and features used by the baseline are therefore the \textbf{raw abstract text}, \textbf{token sequences}, \textbf{POS tag sequences}, \textbf{regex-matched phrases}, and \textbf{domain-specific trigger keywords}. These features allow the system to detect candidate spans without relying on learned contextual representations.
+Our baseline system is a \textbf{rule-based extraction pipeline} designed to recover \textbf{Population}, \textbf{Intervention}, \textbf{Comparator}, and \textbf{Outcome} information from clinical trial abstracts. The system will combine \textbf{regular expressions}, \textbf{part-of-speech (POS) tag patterns}, and \textbf{domain-specific keyword lists} to identify candidate spans for each target field. No external machine learning models are used since the method relies entirely on interpretable linguistic patterns derived from the structure of biomedical text.
 
 \subsubsection{Preprocessing}
 
 Each abstract is loaded from the EBM-NLP dataset as a plain text file (\texttt{.txt}). Two additional files are also loaded for each document: a tokenised word list (\texttt{.tokens}) and a corresponding sequence of POS tags (\texttt{.pos}), both provided by the dataset. These inputs are used directly by the rule-based pipeline during extraction.
 
-The hierarchical annotation files (\texttt{.AGGREGATED.ann}) are \textbf{not} used as inputs to the extraction process itself. Instead, they are used only to obtain \textbf{ground truth spans} for evaluation. In our experimental setting, ground truth spans for \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} are derived from these annotations, while \textbf{Comparator} ground truth is approximated using \textbf{Intervention label 7}, which corresponds to control-group spans.
+The hierarchical annotation files (\texttt{.AGGREGATED.ann}) are \textbf{not} used as inputs to the extraction process itself. Instead, they are used only to obtain \textbf{ground truth spans} for evaluation. In our experimental setting, ground truth spans for \textbf{Population}, \textbf{Intervention}, and \textbf{Outcome} are derived from these annotations, while \textbf{Comparator} ground truth is approximated using \textbf{Intervention label 7}, as mentioned in Section 1.3, which corresponds to control-group spans.
 
 \subsubsection{Extraction Pipeline}
 
@@ -244,7 +238,7 @@ If no regex pattern matches, the system scans the POS tag sequence for field-spe
 \textbf{Step 3: Keyword fallback.}
 If both previous steps fail, the system returns a keyword match from a predefined domain vocabulary. For example, \textit{Outcome} extraction falls back to terms such as ``mortality'', ``pain'', or ``blood pressure''.
 
-Table~\ref{tab:baseline_rules} provides representative examples of the main rule types used for each field, rather than an exhaustive list of all implemented patterns.
+Table~\ref{tab:baseline_rules} provides representative examples of the main rule types used for each field, rather than an exhaustive list of all implemented patterns. These examples are intended to illustrate the overall rule design. In practice, each field is handled by a broader set of regex patterns, POS-based heuristics, and fallback keywords.
 
 \begin{table}[ht]
 \centering
@@ -263,15 +257,14 @@ Outcome & outcome trigger + following phrase & trigger verb + noun phrase & mort
 \label{tab:baseline_rules}
 \end{table}
 
-These examples are intended to illustrate the overall rule design. In practice, each field is handled by a broader set of regex patterns, POS-based heuristics, and fallback keywords.
 
 \subsubsection{Limitations of the Baseline}
 
-The rule-based system outputs only a single span per field, which limits recall when multiple spans are present in the ground truth annotations. In addition, the method is sensitive to wording variation and cannot reliably resolve lexical ambiguity. For example, the conjunction ``or'' may indicate a true comparator relation, as in ``drug A or placebo'', but it may also simply connect related expressions, such as ``efficacy or safety'', leading to false positives in comparator extraction. More generally, because the system depends on handcrafted lexical and syntactic patterns, it may struggle when important information is expressed indirectly, distributed across sentences, or described using wording not covered by the predefined rules.
+The rule-based system outputs only a single span per field, which limits recall when multiple spans are present in the ground truth annotations. In addition, the method is sensitive to wording variation and cannot reliably resolve lexical ambiguity. For example, the conjunction ``or'' may indicate a true comparator relation, as in ``drug A or placebo'', but it may also simply connect related expressions, such as ``efficacy or safety'', leading to false positives in comparator extraction. More generally, the system depends on handcrafted lexical and syntactic patterns, it may struggle when important information is expressed indirectly, distributed across sentences, or described using wording that not covered by the predefined rules.
 
 \subsection{Axes of Experimentation}
 
-To examine how different design choices affect extraction performance, we compared our methods along two main experimental axes. The first axis focuses on the \textbf{extraction approach}, comparing the rule-based baseline with \textbf{LLM-based} strategies such as zero-shot and few-shot prompting. The second axis focuses on \textbf{pipeline design}, comparing \textbf{end-to-end} extraction with a more \textbf{decomposed} multi-step pipeline. Figure~\ref{fig:axes_of_experimentation} summarises these two axes and the main variants explored in our study.
+To examine how different design choices affect performance, we compared our methods by having two main experimental axes. The first axis focuses on the \textbf{extraction approach}, comparing the rule-based baseline with \textbf{LLM-based} strategies, including zero-shot and few-shot prompting. The second axis focuses on \textbf{pipeline design}, comparing \textbf{end-to-end} extraction with a more \textbf{decomposed} substep pipeline. Figure~\ref{fig:axes_of_experimentation} summarises these two axes and the main variants explored in our study.
 
 \begin{figure}[ht]
     \centering
@@ -282,20 +275,18 @@ To examine how different design choices affect extraction performance, we compar
 
 \subsubsection{Axis 1: Rule-based vs LLM-based Extraction}
 
-The first experimental axis compares \textbf{rule-based} and \textbf{LLM-based} extraction strategies. This axis was chosen to examine the trade-off between explicit handcrafted patterns and more flexible language-model-based extraction. The rule-based baseline relies on regex rules, POS-based heuristics, and keyword matching, which are expected to work well when relevant information is expressed using predictable lexical or syntactic patterns. However, this approach may struggle when the wording is indirect, highly variable, or spread across longer contexts.
+11:20 PMClaude responded: The first experimental axis compares \textbf{rule-based} and \textbf{LLM-based} extraction strategies, examining the trade-off between explicit handcrafted pat…The first experimental axis compares \textbf{rule-based} and \textbf{LLM-based} extraction strategies, examining the trade-off between explicit handcrafted patterns and more flexible language-model-based extraction. The rule-based baseline relies on regex rules, POS-based heuristics, and keyword matching, while the LLM-based approaches use \textbf{Claude Sonnet} [3], which we used via API, under \textbf{zero-shot} and \textbf{few-shot} prompting settings. The zero-shot setting extracts field information without task-specific examples, while the few-shot setting provides a small number of demonstrations to guide the model towards the intended schema, particularly for ambiguous fields such as Comparator.
 
-\paragraph{Proposed improvements.}
-Along this axis, our main proposed improvements are the use of \textbf{zero-shot} and \textbf{few-shot} LLM prompting as alternatives to the rule-based baseline. The zero-shot setting allows the model to extract field information without task-specific examples, while the few-shot setting provides a small number of demonstrations to guide the model towards the intended schema. These approaches are intended to improve extraction coverage by handling broader linguistic variation and by capturing field-relevant information that is not explicitly covered by handcrafted rules. Because large language models are pretrained on large-scale text corpora, they may capture richer semantic and contextual patterns, which could be especially helpful when target information is expressed indirectly or in less predictable forms.
+\paragraph{Hypotheses and Proposed Improvement.}\mbox{}\\
+We hypothesise that when field information is expressed using predictable lexical patterns in clearly structured abstracts, the \textbf{rule-based baseline} may have high precision. However, when language is indirect, highly variable, or scattered across numerous phrases, recall may be constrained. Since the \textbf{zero-shot LLM} can use semantic knowledge from pretraining, it is anticipated to provide wider coverage and handle more language variance. However, might be less schema-consistent in the absence of clear direction, especially for structurally ambiguous fields like Comparator, which shares surface form with Intervention. It is anticipated that the \textbf{few-shot LLM} will better than zero-shot by offering examples that enable the model to more closely adhere to the necessary output structure, reduce hallucinations across fields, and more consistently distinguish Comparator from Intervention.
 
-\paragraph{Hypotheses.}
-We hypothesise that the \textbf{rule-based baseline} may achieve relatively high precision on clearly structured and lexically predictable abstracts, but may have limited recall when field information is expressed in less regular forms. In contrast, the \textbf{zero-shot LLM} is expected to offer better flexibility and coverage, although its outputs may be less stable or schema-consistent. The \textbf{few-shot LLM} is expected to perform better than zero-shot prompting, since the additional examples should help the model follow the required output structure more closely and distinguish the target fields more consistently.
 
 \subsubsection{Axis 2: End-to-end vs Decomposed Extraction}
 The second experimental axis compares \textbf{end-to-end} and \textbf{decomposed extraction} pipelines. This comparison was designed to examine whether structured information extraction is better handled as a single direct prediction problem or as a sequence of smaller, more focused subtasks. We first implemented the end-to-end pipeline as a direct baseline, where the model predicts token-level labels in one stage under zero-shot, few-shot, and full-train settings. We then implemented the decomposed pipeline and evaluated it under the same settings, allowing us to compare both formulations consistently across the three schema fields and to interpret their extraction behaviour in relation to one another.
 
-\paragraph{Proposed improvements.} Our main proposed improvement along this axis is the \textbf{decomposed design}. While the \textbf{end-to-end} approach is simpler and more compact, it requires a single model to learn span detection, boundary identification, and field discrimination simultaneously. In contrast, the decomposed pipeline breaks the task into smaller stages, such as identifying broader relevant units before performing more focused extraction within them. This staged design is intended to reduce noise, narrow the prediction space, and make the extraction problem easier to learn. The results support this motivation: in the \textbf{zero-shot setting}, the end-to-end and decomposed approaches produced very similar results, whereas in both the few-shot and full-train settings, the decomposed approach performed slightly better overall.
+\paragraph{Hypotheses and Proposed Improvement.}\mbox{}\\
+We hypothesise that the \textbf{end-to-end pipeline} can perform well when relevant information is expressed clearly and the model is able to learn stable token-level patterns directly from the data. However, its performance may be limited when the task requires handling multiple forms of variation simultaneously. The \textbf{decomposed pipeline} is expected to perform better when some supervision is available, as each stage addresses a narrower subproblem and can make more effective use of the training signal. However, decomposition may introduce error propagation if relevant content is missed in an earlier stage. For this reason, we expected little difference between the two approaches in the zero-shot setting, but anticipated the decomposed method to become more advantageous in the few-shot and full-train settings.
 
-\paragraph{Hypotheses.} We hypothesise that the end-to-end pipeline can perform well when relevant information is expressed clearly and the model is able to learn stable token-level patterns directly from the data. However, its performance may be limited when the task requires handling multiple forms of variation at once. By contrast, the \textbf{decomposed pipeline} is expected to perform better when some supervision is available, because each stage addresses a narrower subproblem and can make more effective use of the training signal. At the same time, decomposition may introduce error propagation if relevant content is missed in an earlier stage. For this reason, we expected little difference between the two approaches in the zero-shot setting, but anticipated that the decomposed method would become more advantageous in the \textbf{few-shot} and \textbf{full-train settings}.
 \section{Experimental evaluation}
 \label{headings}
 
@@ -303,7 +294,7 @@ The second experimental axis compares \textbf{end-to-end} and \textbf{decomposed
 
 \subsubsection{Performance Metrics}
 
-We evaluate all extraction methods using token-level partial match F1, which measures the degree of token overlap between a predicted span and the pooled set of gold-annotated spans for each field. Precision is computed as the fraction of predicted tokens appearing in the gold token set, recall as the fraction of gold tokens covered by the prediction, and F1 as their harmonic mean. This metric was chosen because clinical trial abstracts frequently contain long, multi-token spans, and exact string matching would penalise semantically correct extractions that differ only in boundary placement. We additionally report span-level coverage, defined as the proportion of gold spans for which at least one predicted token overlaps, and downstream usability, measured by the frequency of predefined field-relevant keywords in the extracted outputs.
+We evaluate all extraction methods using \textbf{token-level partial match F1}, measuring token overlap between predicted and gold-annotated spans. Precision is the fraction of predicted tokens appearing in the gold set, recall is the fraction of gold tokens covered by the prediction, and F1 is their harmonic mean. This metric was chosen because exact string matching would penalise semantically correct extractions scores that differ only in boundary placement. We additionally report \textbf{span-level coverage} and \textbf{downstream usability}, measured by the frequency of field-relevant keywords in the extracted outputs.
 
 \subsubsection{Experimental Setup}
 
@@ -312,8 +303,6 @@ All methods were evaluated on the 184 test documents common to all three EBM-NLP
 For the LLM-based approaches, we used \texttt{claude-sonnet-4-6} via the Anthropic API\footnote{\url{https://www.anthropic.com/api}}. The zero-shot prompt instructed the model to extract PICO elements and return results in JSON format, with each value required to be a phrase copied directly from the abstract.\footnote{System instruction: ``You are a medical information extraction system. Extract the PICO elements from the following clinical trial abstract. Return the result in JSON format with keys: Population, Intervention, Comparator, Outcome. Each value must be a phrase copied EXACTLY from the abstract. Use null if not found.''} The few-shot prompt extended this with five manually selected demonstration examples drawn from training documents. Notably, the demonstrations used a short \texttt{P/I/C/O} label format rather than JSON, introducing a format mismatch between the examples and the requested output structure, which may partly explain the modest gain of few-shot over zero-shot. The rule-based baseline was applied directly to the tokenised test documents using the cascade described in Section 2.2.2.
 
 \subsubsection{Results}
-
-Table~\ref{tab:axis1_results} reports token-level F1, precision, and recall for all three methods across the four PICO fields.
 
 \begin{table}[h]
 \centering
@@ -335,8 +324,6 @@ Outcome       & 0.26 & 0.15 & 0.16 & 0.50 & 0.32 & 0.34 & 0.63 & 0.30 & 0.36 \\
 \end{tabular}
 \end{table}
 
-Both LLM-based methods substantially outperform the rule-based baseline across all fields, with overall token F1 more than doubling from 0.21 to approximately 0.46--0.47. The largest gains are observed for Population and Comparator, where rule-based recall is lowest (0.18 and 0.47 respectively), suggesting these fields benefit most from the broader contextual understanding of the LLM. Few-shot offers modest but consistent gains over zero-shot for Comparator (0.59 $\rightarrow$ 0.65) and Intervention (0.36 $\rightarrow$ 0.39), while Population shows a slight drop (0.63 $\rightarrow$ 0.60). Span-level coverage confirms this pattern: the rule-based system covers only 43.8\% of Population gold spans and 27.0\% of Outcome spans, compared to 77.6\% and 49.0\% for Claude zero-shot. Despite this improvement, Outcome coverage remains below 50\% across all methods, reflecting the difficulty of a field whose annotations are numerous and heterogeneous (1,168 gold spans across 184 documents).
-
 \begin{table}[h]
 \centering
 \caption{Span-level coverage for Axis 1 methods across PICO fields on the 184-document test set.}
@@ -353,7 +340,25 @@ Outcome      & 27.0\% & 49.0\% & 48.0\% \\
 \end{tabular}
 \end{table}
 
-The downstream usability analysis reveals a consistent limitation across all methods. Population extraction performs reasonably well, with ``patients'' appearing in approximately 50\% of documents, while Comparator is relatively consistent with ``placebo'' appearing in 19.0--21.2\% of documents. However, Outcome shows near-zero coverage of standard clinical keywords such as ``mortality'' and ``quality of life'' across all methods, suggesting that even the LLM tends to extract overly specific phrases rather than canonical clinical terminology.
+Table~\ref{tab:axis1_results} reports token-level F1, precision, and recall for all three methods across the four PICO fields. Both LLM-based methods substantially outperform the rule-based baseline across all fields, with overall token F1 more than doubling from 0.21 to approximately 0.46--0.47. The largest gains are observed for Population and Comparator, where rule-based recall is lowest (0.18 and 0.47 respectively), suggesting these fields benefit most from the broader contextual understanding of the LLM. Few-shot offers modest but consistent gains over zero-shot for Comparator (0.59 $\rightarrow$ 0.65) and Intervention (0.36 $\rightarrow$ 0.39), while Population shows a slight drop (0.63 $\rightarrow$ 0.60). Span-level coverage confirms this pattern (Table~\ref{tab:axis1_coverage}): the rule-based system covers only 43.8\% of Population gold spans and 27.0\% of Outcome spans, compared to 77.6\% and 49.0\% for Claude zero-shot. Despite this improvement, Outcome coverage remains below 50\% across all methods, reflecting the difficulty of a field whose annotations are numerous and heterogeneous (1,168 gold spans across 184 documents).
+
+\begin{table}[h]
+\centering
+\caption{Downstream usability: example of selected keyword frequency across methods.}
+\label{tab:usability}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Field} & \textbf{Keyword} & \textbf{Rule-based} & \textbf{Zero-shot} & \textbf{Few-shot} \\
+\midrule
+Population   & patients        & 47.3\% & 51.1\% & 50.5\% \\
+Intervention & therapy         & 8.2\%  & 4.9\%  & 6.0\%  \\
+Comparator   & placebo         & 19.0\% & 21.2\% & 20.1\% \\
+Outcome      & mortality       & 0.5\%  & 0.0\%  & 0.0\%  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:usability} shows that Population and Comparator extractions are relatively consistent across methods, with patients'' and placebo'' appearing in around 47-51\% and 19-21\% of documents respectively. Intervention coverage is low across all methods. For example, therapy'' appears in fewer than 9\% of documents reflecting that intervention descriptions tend to use drug-specific terminology rather than generic terms. Outcome coverage is the weakest, with mortality'' appearing in fewer than 1\% of documents across all methods, suggesting that extracted spans are too specific to match canonical clinical terminology.
 
 
 \subsubsection{Error Analysis}
@@ -367,29 +372,20 @@ For the LLM-based methods, the dominant error is boundary over-extension in Outc
 
 \subsubsection{Performance Metrics}
 
-We evaluate the Axis 2 methods using the final extraction scores reported by the end-to-end and decomposed notebooks. For the end-to-end pipeline, predicted BIO tags are converted into text spans and compared against the gold spans using exact span matching after lowercasing and whitespace normalisation. Precision is computed as the fraction of predicted spans that exactly match a gold span, recall as the fraction of gold spans recovered, and F1 as their harmonic mean.
-
-For the decomposed pipeline, we report the saved pipeline precision, recall, and F1 after sentence filtering and token extraction, that is, the performance of the full decomposed system rather than the oracle token stage. The decomposed method also includes a dedicated Comparator evaluation based on the gold \texttt{CONTROL} subtype within the intervention labels, allowing Comparator to be reported alongside Population, Intervention, and Outcome. We additionally report sentence-level results for the decomposed pipeline, since these help identify whether the main bottleneck arises from sentence filtering or token extraction.
-
-For coverage, we report span-level coverage as the percentage of gold spans recovered by each method. In practice, this corresponds to recall expressed as a percentage.
+We evaluate Axis 2 using the final extraction scores reported by the end-to-end and decomposed notebooks. For the end-to-end pipeline, predicted BIO tags are converted into text spans and compared with gold spans using exact span matching after lowercasing and whitespace normalisation, with precision, recall, and F1 computed in the standard way. For the decomposed pipeline, we report pipeline precision, recall, and F1 after sentence filtering and token extraction, reflecting the performance of the full system rather than the oracle token stage. The decomposed method also includes a dedicated Comparator evaluation based on the gold \texttt{CONTROL} subtype within the intervention labels, allowing Comparator to be reported alongside Population, Intervention, and Outcome. Sentence-level results and span-level coverage are additionally reported to help identify whether the main bottleneck lies in sentence filtering or token extraction, with coverage defined as recall expressed as a percentage.
 
 \subsubsection{Experimental Setup}
 
-Both methods use the aggregated hierarchical labels from EBM-NLP, but they differ substantially in formulation. The end-to-end notebook collapses the hierarchical labels into coarse BIO tags and trains a logistic regression token classifier using handcrafted lexical and local-context features. It reports zero-shot, few-shot, and full-train settings. The few-shot setting uses 100 training documents per field, while full-train uses the complete training split.
+Both methods use the aggregated hierarchical labels from EBM-NLP, but differ substantially in formulation. The end-to-end notebook collapses these labels into coarse BIO tags and trains a logistic regression token classifier with handcrafted lexical and local-context features, reporting zero-shot, few-shot, and full-train settings; few-shot uses 100 training documents per field, while full-train uses the complete training split. The decomposed method instead applies a two-stage Bio ClinicalBERT pipeline, first filtering sentences likely to contain Population, Intervention, or Outcome information, and then performing fine-grained token extraction on the retained sentences. Its saved outputs report zero-shot and few-shot settings, with few-shot using 40 training documents per field. Unlike the end-to-end method, it explicitly distinguishes typed labels such as \texttt{B-AGE}, \texttt{B-DRUG}, and \texttt{B-CONTROL}, allowing Comparator to be evaluated directly from the predicted \texttt{CONTROL} subtype.
 
-The decomposed method implements a two-stage Bio ClinicalBERT pipeline. It first applies sentence filtering to identify sentences likely to contain Population, Intervention, or Outcome information, and then performs fine-grained token extraction on the retained sentences. Its saved outputs report zero-shot and few-shot settings, with few-shot using 40 training documents per field. Unlike the end-to-end method, the decomposed pipeline explicitly distinguishes typed labels such as \texttt{B-AGE}, \texttt{B-DRUG}, and \texttt{B-CONTROL}, allowing Comparator to be evaluated directly from the predicted \texttt{CONTROL} subtype.
 
 \subsubsection{Results}
 
-Table~\ref{tab:axis2_token_results} reports token-level Precision, Recall, and F1 for the end-to-end zero-shot, few-shot, and full-train systems, together with the decomposed zero-shot and few-shot token pipeline. The strongest single result is obtained by the decomposed few-shot pipeline on Intervention extraction, where it reaches F1 = 0.35. This is substantially higher than all end-to-end settings, including end-to-end full-train (F1 = 0.12), showing that decomposition can be particularly effective when intervention-related sentences are filtered reliably before token extraction.
-
-However, this advantage is highly uneven across fields. The decomposed pipeline performs poorly on Population, where token-level F1 remains 0.00 in both zero-shot and few-shot settings, and only modestly on Outcome, where few-shot F1 reaches 0.09. Comparator also shows a strong contrast between settings: the decomposed zero-shot pipeline reaches F1 = 0.18, but the few-shot setting collapses to 0.00, indicating that the model fails to recover the \texttt{CONTROL} subtype reliably under the saved few-shot configuration.
-
-The end-to-end pipeline shows a different pattern. Few-shot improves clearly over zero-shot across all three reported PIO fields. Full-train increases recall further, but precision drops substantially, especially for Intervention and Outcome. As a result, full-train does not outperform few-shot on F1, even though it recovers more gold spans. Overall, the results suggest that the decomposed design has higher upside, but only when the token stage is strong enough to benefit from sentence filtering.
+Table~\ref{tab:axis2_token_results} reports token-level Precision, Recall, and F1 for the end-to-end zero-shot, few-shot, and full-train systems, together with the decomposed zero-shot and few-shot token pipeline. The strongest result is the decomposed few-shot Intervention model, which reaches F1 = 0.35, well above all end-to-end settings, including full-train (F1 = 0.12), suggesting that decomposition can be effective when intervention-relevant sentences are filtered reliably before token extraction. However, this gain is uneven: Population remains at F1 = 0.00 in both decomposed settings, Outcome reaches only F1 = 0.09 in decomposed few-shot, and Comparator falls from F1 = 0.18 in decomposed zero-shot to 0.00 in decomposed few-shot. By contrast, the end-to-end pipeline improves from zero-shot to few-shot across all reported PIO fields, while full-train increases recall but lowers precision enough that F1 does not exceed few-shot. Overall, the decomposed design shows higher upside, but only when the token stage is sufficiently strong.
 
 \begin{table}[h]
 \centering
-\caption{Token-level Precision, Recall, and F1 for Axis 2 methods across PICO fields. End-to-end results are reported for zero-shot, few-shot, and full-train. Decomposed results correspond to the final token pipeline after sentence filtering.}
+\caption{Token-level Precision, Recall, and F1 for Axis 2 methods across PICO fields, with end-to-end results and decomposed results}
 \label{tab:axis2_token_results}
 \resizebox{\textwidth}{!}{
 \begin{tabular}{lccccccccccccccc}
@@ -409,9 +405,11 @@ Outcome      & 0.07 & 0.02 & 0.03 & 0.09 & 0.28 & 0.13 & 0.06 & 0.36 & 0.11 & 0.
 }
 \end{table}
 
-The decomposed notebook also makes it possible to inspect the sentence stage directly. Table~\ref{tab:axis2_sentence_results} reports sentence-level Precision, Recall, and F1 for the decomposed system, expressed as percentages for easier interpretation. The best sentence-stage result is obtained by the few-shot Population classifier, which reaches 70.12\% F1, followed closely by few-shot Intervention at 69.35\% and few-shot Outcome at 68.62\%. This confirms that sentence filtering itself works reasonably well in the few-shot setting for the main PIO fields. However, this does not translate uniformly into strong final extraction.
+The decomposed notebook also allows the sentence stage to be inspected directly. Table~8 reports sentence-level Precision, Recall, and F1 for the decomposed system, expressed as percentages. The strongest sentence-stage result is obtained by the few-shot Population classifier with 70.12\% F1, followed by few-shot Intervention at 69.35\% and few-shot Outcome at 68.62\%. This shows that sentence filtering works reasonably well for the main PIO fields, although this does not translate consistently into strong final extraction.
 
-Comparator again shows a strong imbalance. The zero-shot setting achieves sentence-level F1 = 22.31\%, while the few-shot setting drops to 0.00\%. This confirms that Comparator recovery remains fragile even before the final token-stage span construction.
+Comparator is much weaker. The zero-shot setting reaches sentence-level F1 = 22.31\%, while the few-shot setting falls to 0.00\%, indicating that Comparator recovery remains fragile even before token-level span extraction.
+
+
 
 \begin{table}[h]
 \centering
@@ -431,13 +429,13 @@ Outcome      & 73.58\% & 4.34\% & 8.20\% & 71.04\% & 66.37\% & 68.62\% \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:axis2_coverage} reports span-level coverage as a percentage of gold spans recovered. The pattern broadly follows recall. End-to-end few-shot provides moderate but consistent coverage across Population, Intervention, and Outcome, while end-to-end full-train raises coverage further in all three fields. However, this increase comes at the cost of much lower precision, which is why its F1 remains below the few-shot setting.
+Table~\ref{tab:axis2_coverage} reports span-level coverage as the percentage of gold spans recovered. The pattern broadly follows recall. End-to-end few-shot provides moderate and consistent coverage across Population, Intervention, and Outcome, while end-to-end full-train raises coverage further in all three fields. However, this gain comes at the cost of lower precision, which is why its F1 remains below the few-shot setting.
 
-The decomposed few-shot pipeline is much more uneven. Coverage remains strong only for Intervention, while Population remains at 0.0\%, Comparator also falls to 0.0\%, and Outcome remains comparatively low. By contrast, decomposed zero-shot recovers 15.44\% of Comparator gold spans, showing that the zero-shot control/comparator prompts recover some useful signal even though the few-shot comparator model does not.
+The decomposed few-shot pipeline is much more uneven. Coverage remains strong only for Intervention, while Population and Comparator both remain at 0.0\%, and Outcome stays comparatively low. By contrast, decomposed zero-shot recovers 15.44\% of Comparator gold spans, showing that the zero-shot control/comparator prompts recover some useful signal even though the few-shot comparator model does not.
 
 \begin{table}[h]
 \centering
-\caption{Span-level coverage for Axis 2 methods across PICO fields. Coverage is reported as the percentage of gold spans recovered.}
+\caption{Span-level coverage for Axis 2 methods across PICO fields.}
 \label{tab:axis2_coverage}
 \resizebox{\textwidth}{!}{
 \begin{tabular}{lccccc}
@@ -455,12 +453,19 @@ Outcome      & 2.2\%  & 27.7\% & 35.5\% & 0.8\%  & 7.1\% \\
 
 \subsubsection{Error Analysis}
 
-A clear contrast between the two pipelines appears in Intervention extraction. The decomposed few-shot system reaches F1 = 0.35, substantially higher than the end-to-end few-shot score of 0.15 and the end-to-end full-train score of 0.12. This suggests that filtering intervention-relevant sentences before token extraction is beneficial when the field is lexically distinctive and clinically well localised.
+A clear contrast between the two pipelines appears in Intervention extraction. The decomposed few-shot system reaches F1 = 0.35, well above the end-to-end few-shot score of 0.15 and the end-to-end full-train score of 0.12. This suggests that filtering intervention-relevant sentences before token extraction is beneficial when the field is lexically distinctive and clinically well localised.
 
-However, the same decomposed pipeline fails completely on Population at the token stage, even though the sentence filter itself performs strongly. This indicates that the main bottleneck is not sentence routing alone, but the downstream token extractor’s inability to recover reliable participant spans from the retained sentences.
+However, the same decomposed pipeline fails completely on Population at the token stage, despite strong sentence filtering. This indicates that the main bottleneck is not sentence routing alone, but the downstream token extractor’s inability to recover reliable participant spans.
 
-The end-to-end pipeline shows a different failure mode. Few-shot improves clearly over zero-shot, but full-train mainly increases recall rather than balanced extraction quality. In particular, full-train recovers more gold spans across Population, Intervention, and Outcome, but precision drops enough that F1 does not improve beyond the few-shot setting. Taken together, the results suggest that the decomposed design has greater potential when the sentence and token stages align well, whereas the end-to-end approach is more robust but less capable of producing strong field-specific gains.
+The end-to-end pipeline shows a different failure mode. Few-shot improves clearly over zero-shot, while full-train mainly increases recall rather than balanced extraction quality. Although full-train recovers more gold spans across Population, Intervention, and Outcome, precision drops enough that F1 does not exceed the few-shot setting. Overall, the decomposed design has greater potential when the sentence and token stages align well, whereas the end-to-end approach is more robust but less capable of strong field-specific gains.
 
+
+\subsection{Discussion}
+
+The results across both axes reveal a consistent pattern: approaches with greater semantic understanding achieve better coverage, but this does not always translate into higher precision or schema consistency.
+In Axis 1, LLM-based methods substantially outperform the rule-based baseline, with overall F1 more than doubling from 0.21 to 0.47. However, the modest gain of few-shot over zero-shot suggests that a small number of demonstrations is insufficient to resolve deeper ambiguities, particularly for Comparator, which shares surface form with Intervention.
+In Axis 2, the decomposed pipeline shows higher potential for fields where sentence filtering works well, as seen in Intervention (F1 = 0.35), but fails completely on Population and Comparator in the few-shot setting. The end-to-end approach is more consistent but achieves lower overall performance. Comparing both axes, LLM-based extraction achieves more consistent results across all four PICO fields, suggesting it is a more practical choice in low-resource settings. However, prompt-only approaches have a performance ceiling, and further improvement would likely require fine-tuning.
+A shared limitation across all methods is Outcome extraction, which remains below 50\% coverage even for the best approach, reflecting the heterogeneous nature of Outcome annotations in EBM-NLP.
 
 \section{Conclusions}
 \label{others}
@@ -471,214 +476,11 @@ Few-shot prompting offered consistent but modest improvements over zero-shot, mo
 
 Despite the clear advantage of LLM-based methods, several challenges remain open. Recall remains structurally limited by the single-span-per-field constraint, as the ground truth frequently contains multiple non-contiguous spans per field. Our exploration of a multi-span extraction variant showed that prompting the model to return lists of spans improved coverage but introduced hallucination, particularly for fields with fewer annotated spans such as Comparator, where the model over-generated additional spans likely influenced by the distribution of the more span-rich fields it had been exposed to during pretraining. Downstream usability analysis further revealed that even the best-performing LLM variant extracted overly specific outcome phrases that do not align with canonical clinical terminology, limiting their utility for aggregation or querying. Addressing these challenges through better output validation, post-processing, or more structured prompting strategies remains an important direction for future work.
 
-\subsection{Citations within the text}
 
 
-The \verb+natbib+ package will be loaded for you by default.  Citations may be
-author/year or numeric, as long as you maintain internal consistency.  As to the
-format of the references themselves, any style is acceptable as long as it is
-used consistently.
 
 
-The documentation for \verb+natbib+ may be found at
-\begin{center}
-  \url{http://mirrors.ctan.org/macros/latex/contrib/natbib/natnotes.pdf}
-\end{center}
-Of note is the command \verb+\citet+, which produces citations appropriate for
-use in inline text.  For example,
-\begin{verbatim}
-   \citet{hasselmo} investigated\dots
-\end{verbatim}
-produces
-\begin{quote}
-  Hasselmo, et al.\ (1995) investigated\dots
-\end{quote}
 
-
-If you wish to load the \verb+natbib+ package with options, you may add the
-following before loading the \verb+neurips_2026+ package:
-\begin{verbatim}
-   \PassOptionsToPackage{options}{natbib}
-\end{verbatim}
-
-
-If \verb+natbib+ clashes with another package you load, you can add the optional
-argument \verb+nonatbib+ when loading the style file:
-\begin{verbatim}
-   \usepackage[nonatbib]{neurips_2026}
-\end{verbatim}
-
-
-As submission is double blind, refer to your own published work in the third
-person. That is, use ``In the previous work of Jones et al.\ [4],'' not ``In our
-previous work [4].'' If you cite your other papers that are not widely available
-(e.g., a journal paper under review), use anonymous author names in the
-citation, e.g., an author of the form ``A.\ Anonymous'' and include a copy of the anonymized paper in the supplementary material.
-
-
-\subsection{Footnotes}
-
-
-Footnotes should be used sparingly.  If you do require a footnote, indicate
-footnotes with a number\footnote{Sample of the first footnote.} in the
-text. Place the footnotes at the bottom of the page on which they appear.
-Precede the footnote with a horizontal rule of 2~inches (12~picas).
-
-
-Note that footnotes are properly typeset \emph{after} punctuation
-marks.\footnote{As in this example.}
-
-
-\subsection{Figures}
-
-
-\begin{figure}
-  \centering
-  \fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
-  \caption{Sample figure caption. Explain what the figure shows and add a key take-away message to the caption.}
-\end{figure}
-
-
-All artwork must be neat, clean, and legible. Lines should be dark enough for
- reproduction purposes. The figure number and caption always appear after the
-figure. Place one line space before the figure caption and one line space after
-the figure. The figure caption should be lower case (except for the first word and proper nouns); figures are numbered consecutively.
-
-
-You may use color figures.  However, it is best for the figure captions and the
-paper body to be legible if the paper is printed in either black/white or in
-color.
-
-
-\subsection{Tables}
-
-
-All tables must be centered, neat, clean, and legible.  The table number and
-title always appear before the table.  See Table~\ref{sample-table}.
-
-
-Place one line space before the table title, one line space after the
-table title, and one line space after the table. The table title must
-be lower case (except for the first word and proper nouns); tables are
-numbered consecutively.
-
-
-Note that publication-quality tables \emph{do not contain vertical rules}. We
-strongly suggest the use of the \verb+booktabs+ package, which allows for
-typesetting high-quality, professional tables:
-\begin{center}
-  \url{https://www.ctan.org/pkg/booktabs}
-\end{center}
-This package was used to typeset Table~\ref{sample-table}.
-
-
-\begin{table}
-  \caption{Sample table caption. Explain what the table shows and add a key take-away message to the caption.}
-  \label{sample-table}
-  \centering
-  \begin{tabular}{lll}
-    \toprule
-    \multicolumn{2}{c}{Part}                   \\
-    \cmidrule(r){1-2}
-    Name     & Description     & Size ($\mu$m) \\
-    \midrule
-    Dendrite & Input terminal  & $\approx$100     \\
-    Axon     & Output terminal & $\approx$10      \\
-    Soma     & Cell body       & up to $10^6$  \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{Math}
-Note that display math in bare TeX commands will not create correct line numbers for submission. Please use LaTeX (or AMSTeX) commands for unnumbered display math. (You really shouldn't be using \$\$ anyway; see \url{https://tex.stackexchange.com/questions/503/why-is-preferable-to} and \url{https://tex.stackexchange.com/questions/40492/what-are-the-differences-between-align-equation-and-displaymath} for more information.)
-
-\subsection{Final instructions}
-
-Do not change any aspects of the formatting parameters in the style files.  In
-particular, do not modify the width or length of the rectangle the text should
-fit into, and do not change font sizes. Please note that pages should be
-numbered.
-
-
-\section{Preparing PDF files}
-
-
-Please prepare submission files with paper size ``US Letter,'' and not, for
-example, ``A4.''
-
-
-Fonts were the main cause of problems in the past years. Your PDF file must only
-contain Type 1 or Embedded TrueType fonts. Here are a few instructions to
-achieve this.
-
-
-\begin{itemize}
-
-
-\item You should directly generate PDF files using \verb+pdflatex+.
-
-
-\item You can check which fonts a PDF files uses.  In Acrobat Reader, select the
-  menu Files$>$Document Properties$>$Fonts and select Show All Fonts. You can
-  also use the program \verb+pdffonts+ which comes with \verb+xpdf+ and is
-  available out-of-the-box on most Linux machines.
-
-
-\item \verb+xfig+ ``patterned'' shapes are implemented with bitmap fonts.  Use
-  "solid" shapes instead.
-
-
-\item The \verb+\bbold+ package almost always uses bitmap fonts.  You should use
-  the equivalent AMS Fonts:
-\begin{verbatim}
-   \usepackage{amsfonts}
-\end{verbatim}
-followed by, e.g., \verb+\mathbb{R}+, \verb+\mathbb{N}+, or \verb+\mathbb{C}+
-for $\mathbb{R}$, $\mathbb{N}$ or $\mathbb{C}$.  You can also use the following
-workaround for reals, natural and complex:
-\begin{verbatim}
-   \newcommand{\RR}{I\!\!R} %real numbers
-   \newcommand{\Nat}{I\!\!N} %natural numbers
-   \newcommand{\CC}{I\!\!\!\!C} %complex numbers
-\end{verbatim}
-Note that \verb+amsfonts+ is automatically loaded by the \verb+amssymb+ package.
-
-
-\end{itemize}
-
-
-If your file contains type 3 fonts or non embedded TrueType fonts, we will ask
-you to fix it.
-
-
-\subsection{Margins in \LaTeX{}}
-
-
-Most of the margin problems come from figures positioned by hand using
-\verb+\special+ or other commands. We suggest using the command
-\verb+\includegraphics+ from the \verb+graphicx+ package. Always specify the
-figure width as a multiple of the line width as in the example below:
-\begin{verbatim}
-   \usepackage[pdftex]{graphicx} ...
-   \includegraphics[width=0.8\linewidth]{myfile.pdf}
-\end{verbatim}
-See Section 4.4 in the graphics bundle documentation
-(\url{http://mirrors.ctan.org/macros/latex/required/graphics/grfguide.pdf})
-
-
-A number of width problems arise when \LaTeX{} cannot properly hyphenate a
-line. Please give LaTeX hyphenation hints using the \verb+\-+ command when
-necessary.
-
-\begin{ack}
-Use unnumbered first level headings for the acknowledgments. All acknowledgments
-go at the end of the paper before the list of references. Moreover, you are required to declare
-funding (financial activities supporting the submitted work) and competing interests (related financial activities outside the submitted work).
-More information about this disclosure can be found at: \url{https://neurips.cc/Conferences/2026/PaperInformation/FundingDisclosure}.
-
-
-Do {\bf not} include this section in the anonymized submission, only in the final paper. You can use the \texttt{ack} environment provided in the style file to automatically hide this section in the anonymized submission.
-\end{ack}
 
 \section*{References}
 
@@ -695,36 +497,27 @@ Note that the Reference section does not count towards the page limit.
 \small
 
 
-[1] Alexander, J.A.\ \& Mozer, M.C.\ (1995) Template-based algorithms for
-connectionist rule extraction. In G.\ Tesauro, D.S.\ Touretzky and T.K.\ Leen
-(eds.), {\it Advances in Neural Information Processing Systems 7},
-pp.\ 609--616. Cambridge, MA: MIT Press.
+[1] EBM-NLP Dataset. Available at: \url{https://github.com/bepnye/EBM-NLP}
 
 
-[2] Bower, J.M.\ \& Beeman, D.\ (1995) {\it The Book of GENESIS: Exploring
-  Realistic Neural Models with the GEneral NEural SImulation System.}  New York:
-TELOS/Springer--Verlag.
+[2] BioLORD-2023. Available at: \url{https://huggingface.co/FremyCompany/BioLORD-2023}
 
 
-[3] Hasselmo, M.E., Schnell, E.\ \& Barkai, E.\ (1995) Dynamics of learning and
-recall at excitatory recurrent synapses and cholinergic modulation in rat
-hippocampal region CA3. {\it Journal of Neuroscience} {\bf 15}(7):5249-5262.
+[3] Anthropic. (2024) Claude Sonnet. Available at: \url{https://docs.anthropic.com}
 }
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\appendix
+%\appendix
 
-\section{Technical appendices and supplementary material}
-Technical appendices with additional results, figures, graphs, and proofs may be submitted with the paper submission before the full submission deadline (see above). You can upload a ZIP file for videos or code, but do not upload a separate PDF file for the appendix. There is no page limit for the technical appendices. 
+%\section{Technical appendices and supplementary material}
 
-Note: Think of the appendix as ``optional reading'' for reviewers. The paper must be able to stand alone without the appendix; for example, adding critical experiments that support the main claims to an appendix is inappropriate. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newpage
-\input{checklist.tex}
+%\newpage
+%\input{checklist.tex}
 
 
 \end{document}
