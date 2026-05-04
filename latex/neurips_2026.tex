@@ -100,7 +100,7 @@
 
 
 \begin{document}
-
+\raggedbottom
 
 \maketitle
 
@@ -117,9 +117,7 @@ The abstracts of clinical trials contain important information about study desig
 \subsection{Task Overview}
 
 
-This project addresses the task of \textbf{structured information extraction} from clinical trial abstracts in the \textbf{EBM-NLP} dataset. The objective is to identify and extract \textbf{Population, Intervention, Comparator, and Outcome (PICO)} information from unstructured abstracts and represent it in a predefined schema. 
-
-The task also includes \textbf{preliminary clustering analysis} to examine whether natural clusters correspond to schema fields, as well as comparison of alternative extraction pipelines across \textbf{two design axes}. We then evaluate these approaches in terms of \textbf{field-level extraction quality}, \textbf{coverage versus precision}, and \textbf{downstream usability}, and discuss the trade-offs and limitations of the task.
+This project addresses the task of \textbf{structured information extraction} from clinical trial abstracts in the \textbf{EBM-NLP} dataset. The objective is to identify and extract \textbf{Population, Intervention, Comparator, and Outcome (PICO)} information from unstructured abstracts and represent it in a predefined schema. The task also includes \textbf{preliminary clustering analysis} to examine whether natural clusters correspond to schema fields, as well as comparison of alternative extraction pipelines across \textbf{two design axes}. We then evaluate these approaches in terms of \textbf{field-level extraction quality}, \textbf{coverage versus precision}, and \textbf{downstream usability}, and discuss the trade-offs and limitations of the task.
 
 \subsection{Motivation and Challenges}
 
@@ -364,13 +362,104 @@ A concrete illustration of rule-based failure modes is provided by a document co
 
 For the LLM-based methods, the dominant error is boundary over-extension in Outcome extraction, where the zero-shot model returns a full result sentence while the few-shot model returns a more focused noun phrase. A further error pattern is field confusion in the rule-based system, where ``placebo'' is frequently misassigned to the Intervention field rather than Comparator, a problem largely absent in both LLM-based methods. Together, these error patterns suggest that while LLM-based methods handle lexical variability more robustly, precise boundary control and schema consistency remain challenging across all approaches.
 
-\subsubsection{Discussion}
-
-The results clearly support the hypothesis that LLM-based extraction provides better coverage and F1 than the rule-based baseline, particularly where relevant information is expressed variably or indirectly. The few-shot setting offers consistent but modest gains, most evident for Comparator (0.59 $\rightarrow$ 0.65) and Intervention (0.36 $\rightarrow$ 0.39). The Population drop under few-shot (0.63 $\rightarrow$ 0.60) may reflect sensitivity to the format mismatch between the \texttt{P/I/C/O} demonstration format and the requested JSON output structure.
-
-A shared limitation is the single-span-per-field constraint, which structurally caps recall regardless of extraction quality. We explored a multi-span variant in which the LLM returned a list of spans per field; while coverage improved, precision dropped substantially as the model hallucinated spans in fields with limited evidence, particularly for Comparator. This suggests multi-span extraction requires more careful prompt design or output validation to prevent over-generation.
 
 \subsection{Axis 2: End-to-end vs Decomposed Extraction}
+
+\subsubsection{Performance Metrics}
+
+We evaluate the Axis 2 methods using the final extraction scores reported by the end-to-end and decomposed notebooks. For the end-to-end pipeline, predicted BIO tags are converted into text spans and compared against the gold spans using exact span matching after lowercasing and whitespace normalisation. Precision is computed as the fraction of predicted spans that exactly match a gold span, recall as the fraction of gold spans recovered, and F1 as their harmonic mean.
+
+For the decomposed pipeline, we report the saved pipeline precision, recall, and F1 after sentence filtering and token extraction, that is, the performance of the full decomposed system rather than the oracle token stage. The decomposed method also includes a dedicated Comparator evaluation based on the gold \texttt{CONTROL} subtype within the intervention labels, allowing Comparator to be reported alongside Population, Intervention, and Outcome. We additionally report sentence-level results for the decomposed pipeline, since these help identify whether the main bottleneck arises from sentence filtering or token extraction.
+
+For coverage, we report span-level coverage as the percentage of gold spans recovered by each method. In practice, this corresponds to recall expressed as a percentage.
+
+\subsubsection{Experimental Setup}
+
+Both methods use the aggregated hierarchical labels from EBM-NLP, but they differ substantially in formulation. The end-to-end notebook collapses the hierarchical labels into coarse BIO tags and trains a logistic regression token classifier using handcrafted lexical and local-context features. It reports zero-shot, few-shot, and full-train settings. The few-shot setting uses 100 training documents per field, while full-train uses the complete training split.
+
+The decomposed method implements a two-stage Bio ClinicalBERT pipeline. It first applies sentence filtering to identify sentences likely to contain Population, Intervention, or Outcome information, and then performs fine-grained token extraction on the retained sentences. Its saved outputs report zero-shot and few-shot settings, with few-shot using 40 training documents per field. Unlike the end-to-end method, the decomposed pipeline explicitly distinguishes typed labels such as \texttt{B-AGE}, \texttt{B-DRUG}, and \texttt{B-CONTROL}, allowing Comparator to be evaluated directly from the predicted \texttt{CONTROL} subtype.
+
+\subsubsection{Results}
+
+Table~\ref{tab:axis2_token_results} reports token-level Precision, Recall, and F1 for the end-to-end zero-shot, few-shot, and full-train systems, together with the decomposed zero-shot and few-shot token pipeline. The strongest single result is obtained by the decomposed few-shot pipeline on Intervention extraction, where it reaches F1 = 0.35. This is substantially higher than all end-to-end settings, including end-to-end full-train (F1 = 0.12), showing that decomposition can be particularly effective when intervention-related sentences are filtered reliably before token extraction.
+
+However, this advantage is highly uneven across fields. The decomposed pipeline performs poorly on Population, where token-level F1 remains 0.00 in both zero-shot and few-shot settings, and only modestly on Outcome, where few-shot F1 reaches 0.09. Comparator also shows a strong contrast between settings: the decomposed zero-shot pipeline reaches F1 = 0.18, but the few-shot setting collapses to 0.00, indicating that the model fails to recover the \texttt{CONTROL} subtype reliably under the saved few-shot configuration.
+
+The end-to-end pipeline shows a different pattern. Few-shot improves clearly over zero-shot across all three reported PIO fields. Full-train increases recall further, but precision drops substantially, especially for Intervention and Outcome. As a result, full-train does not outperform few-shot on F1, even though it recovers more gold spans. Overall, the results suggest that the decomposed design has higher upside, but only when the token stage is strong enough to benefit from sentence filtering.
+
+\begin{table}[h]
+\centering
+\caption{Token-level Precision, Recall, and F1 for Axis 2 methods across PICO fields. End-to-end results are reported for zero-shot, few-shot, and full-train. Decomposed results correspond to the final token pipeline after sentence filtering.}
+\label{tab:axis2_token_results}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lccccccccccccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{End-to-end Zero-shot}} & \multicolumn{3}{c}{\textbf{End-to-end Few-shot}} & \multicolumn{3}{c}{\textbf{End-to-end Full-train}} & \multicolumn{3}{c}{\textbf{Decomposed Zero-shot}} & \multicolumn{3}{c}{\textbf{Decomposed Few-shot}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10} \cmidrule(lr){11-13} \cmidrule(lr){14-16}
+\textbf{Field} & P & R & F1 & P & R & F1 & P & R & F1 & P & R & F1 & P & R & F1 \\
+\midrule
+Population   & 0.04 & 0.04 & 0.04 & 0.08 & 0.23 & 0.11 & 0.04 & 0.26 & 0.08 & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 \\
+Intervention & 0.05 & 0.04 & 0.04 & 0.10 & 0.33 & 0.15 & 0.07 & 0.49 & 0.12 & 0.08 & 0.03 & 0.04 & 0.66 & 0.23 & 0.35 \\
+Comparator   & --   & --   & --   & --   & --   & --   & --   & --   & --   & 0.21 & 0.15 & 0.18 & 0.00 & 0.00 & 0.00 \\
+Outcome      & 0.07 & 0.02 & 0.03 & 0.09 & 0.28 & 0.13 & 0.06 & 0.36 & 0.11 & 0.14 & 0.01 & 0.01 & 0.13 & 0.07 & 0.09 \\
+\midrule
+\textbf{Overall (PIO only)} & 0.06 & 0.03 & 0.04 & 0.09 & 0.28 & 0.13 & 0.06 & 0.37 & 0.10 & 0.07 & 0.01 & 0.02 & 0.26 & 0.10 & 0.15 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The decomposed notebook also makes it possible to inspect the sentence stage directly. Table~\ref{tab:axis2_sentence_results} reports sentence-level Precision, Recall, and F1 for the decomposed system, expressed as percentages for easier interpretation. The best sentence-stage result is obtained by the few-shot Population classifier, which reaches 70.12\% F1, followed closely by few-shot Intervention at 69.35\% and few-shot Outcome at 68.62\%. This confirms that sentence filtering itself works reasonably well in the few-shot setting for the main PIO fields. However, this does not translate uniformly into strong final extraction.
+
+Comparator again shows a strong imbalance. The zero-shot setting achieves sentence-level F1 = 22.31\%, while the few-shot setting drops to 0.00\%. This confirms that Comparator recovery remains fragile even before the final token-stage span construction.
+
+\begin{table}[h]
+\centering
+\caption{Sentence-level Precision, Recall, and F1 (\%) for the decomposed pipeline.}
+\label{tab:axis2_sentence_results}
+\begin{tabular}{lcccccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Decomposed Zero-shot}} & \multicolumn{3}{c}{\textbf{Decomposed Few-shot}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{Field} & P & R & F1 & P & R & F1 \\
+\midrule
+Population   & 100.00\% & 0.19\% & 0.37\% & 75.37\% & 65.55\% & 70.12\% \\
+Intervention & 52.34\% & 94.04\% & 67.25\% & 76.74\% & 63.26\% & 69.35\% \\
+Comparator   & 25.71\% & 19.71\% & 22.31\% & 0.00\% & 0.00\% & 0.00\% \\
+Outcome      & 73.58\% & 4.34\% & 8.20\% & 71.04\% & 66.37\% & 68.62\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:axis2_coverage} reports span-level coverage as a percentage of gold spans recovered. The pattern broadly follows recall. End-to-end few-shot provides moderate but consistent coverage across Population, Intervention, and Outcome, while end-to-end full-train raises coverage further in all three fields. However, this increase comes at the cost of much lower precision, which is why its F1 remains below the few-shot setting.
+
+The decomposed few-shot pipeline is much more uneven. Coverage remains strong only for Intervention, while Population remains at 0.0\%, Comparator also falls to 0.0\%, and Outcome remains comparatively low. By contrast, decomposed zero-shot recovers 15.44\% of Comparator gold spans, showing that the zero-shot control/comparator prompts recover some useful signal even though the few-shot comparator model does not.
+
+\begin{table}[h]
+\centering
+\caption{Span-level coverage for Axis 2 methods across PICO fields. Coverage is reported as the percentage of gold spans recovered.}
+\label{tab:axis2_coverage}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Field} & \textbf{End-to-end Zero-shot} & \textbf{End-to-end Few-shot} & \textbf{End-to-end Full-train} & \textbf{Decomposed Zero-shot} & \textbf{Decomposed Few-shot} \\
+\midrule
+Population   & 4.2\%  & 23.2\% & 26.4\% & 0.0\%  & 0.0\% \\
+Intervention & 3.8\%  & 33.4\% & 48.6\% & 2.8\%  & 23.4\% \\
+Comparator   & --     & --     & --     & 15.44\% & 0.00\% \\
+Outcome      & 2.2\%  & 27.7\% & 35.5\% & 0.8\%  & 7.1\% \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsubsection{Error Analysis}
+
+A clear contrast between the two pipelines appears in Intervention extraction. The decomposed few-shot system reaches F1 = 0.35, substantially higher than the end-to-end few-shot score of 0.15 and the end-to-end full-train score of 0.12. This suggests that filtering intervention-relevant sentences before token extraction is beneficial when the field is lexically distinctive and clinically well localised.
+
+However, the same decomposed pipeline fails completely on Population at the token stage, even though the sentence filter itself performs strongly. This indicates that the main bottleneck is not sentence routing alone, but the downstream token extractor’s inability to recover reliable participant spans from the retained sentences.
+
+The end-to-end pipeline shows a different failure mode. Few-shot improves clearly over zero-shot, but full-train mainly increases recall rather than balanced extraction quality. In particular, full-train recovers more gold spans across Population, Intervention, and Outcome, but precision drops enough that F1 does not improve beyond the few-shot setting. Taken together, the results suggest that the decomposed design has greater potential when the sentence and token stages align well, whereas the end-to-end approach is more robust but less capable of producing strong field-specific gains.
 
 
 \section{Conclusions}
